@@ -5,5 +5,5 @@
 - [Owner](https://github.com/XYCoolcraft)
 -  =======
 -  📱✅ My Social Media:
--  [TikTok](https://tiktok.com/xycoolcraft)
--  [YouTube](https://youtube.com/xycoolcraft)
+-  [TikTok](https://tiktok.com/@xycoolcraft)
+-  [YouTube](https://youtube.com/@xycoolcraft)
