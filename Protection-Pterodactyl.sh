@@ -36,12 +36,11 @@ backup_files() {
 # --- Fungsi Untuk Melepas Fitur / Restore ---
 uninstall_features() {
     echo -e "\n${C_YELLOW}===== Memulai Proses Melepas Fitur (Restore Panel) =====${C_RESET}"
-    echo -e "${C_RED}${C_BOLD}PERINGATAN: Operasi ini akan menghapus semua file panel saat ini${C_RESET}"
-    echo -e "${C_RED}${C_BOLD}dan menggantinya dengan file dari backup yang Anda pilih.${C_RESET}\n"
+    echo -e "${C_RED}${C_BOLD}PERINGATAN: Operasi ini akan menimpa file panel Anda saat ini!${C_RESET}\n"
     mapfile -t backups < <(ls -1t "$BACKUP_DIR"/panel_backup_*.tar.gz 2>/dev/null)
-    if [ ${#backups[@]} -eq 0 ]; then echo -e "${C_RED}Tidak ada file backup valid (*.tar.gz) yang ditemukan.${C_RESET}"; return; fi
+    if [ ${#backups[@]} -eq 0 ]; then echo -e "${C_RED}Tidak ada file backup valid yang ditemukan.${C_RESET}"; return; fi
 
-    echo -e "${C_YELLOW}Pilih file backup yang akan dipulihkan (restore):${C_RESET}"
+    echo -e "${C_YELLOW}Pilih file backup untuk dipulihkan:${C_RESET}"
     for i in "${!backups[@]}"; do
         filename=$(basename "${backups[$i]}")
         echo "  ${C_CYAN}$((i+1)))${C_RESET} $filename"
@@ -57,7 +56,8 @@ uninstall_features() {
     echo -e "\n${C_YELLOW}Memulai proses restore...${C_RESET}"
     rm -rf "$PANEL_DIR"
     if tar -xzvf "$SELECTED_BACKUP" -C "$(dirname "$PANEL_DIR")"; then
-        (cd "$PANEL_DIR" && php artisan optimize:clear)
+        echo " -> Membersihkan dan membangun ulang cache..."
+        (cd "$PANEL_DIR" && php artisan config:clear && php artisan view:clear && php artisan route:clear && php artisan config:cache)
         echo -e "\n${C_GREEN}${C_BOLD}✔ RESTORE SELESAI! Panel telah kembali ke kondisi semula.${C_RESET}"
     else
         echo -e "\n${C_RED}✘ Gagal mengekstrak file backup!${C_RESET}"
@@ -92,16 +92,14 @@ install_features() {
     PROTECTION_CODE_VIEW='if (Auth::user()->id != 1) { abort(403, "AKSES DITOLAK"); }'
     UPDATE_USER_PROTECTION='if (Auth::user()->id != 1) { if (!empty($request->input("password"))) { return redirect()->back()->withErrors(["error" => "Anti Ubah Data User Aktif! '\''password'\'' hanya bisa diubah oleh user ID 1 @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); } if ($user->email !== $request->input("email")) { return redirect()->back()->withErrors(["error" => "Anti Ubah Data User Aktif! '\''email'\'' hanya bisa diubah oleh user ID 1 @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); } }'
     
-    # --- FIX: Menggunakan metode 'sed' yang lebih aman untuk menyisipkan kode setelah '{' ---
     inject_code() {
         local file=$1
         local function_signature=$2
         local code_to_inject=$3
-        # Mengganti '{' dengan '{' + newline + kode, hanya pada baris yang mengandung signature fungsi
         sed -i "/${function_signature}/s/{/{\n${code_to_inject}/" "$file"
     }
 
-    # Modifikasi file-file controller dengan metode baru
+    # Modifikasi file-file controller
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function destroy(User \$user)" "$PROTECTION_CODE_DELETE_USER"
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function update(UpdateUserRequest \$request, User \$user)" "$UPDATE_USER_PROTECTION"
     inject_code "app/Http/Controllers/Admin/ServersController.php" "public function destroy(Server \$server)" "$PROTECTION_CODE_DELETE_SERVER"
@@ -110,13 +108,19 @@ install_features() {
     inject_code "app/Http/Controllers/Admin/Settings/IndexController.php" "public function index(IndexFormRequest \$request)" "$PROTECTION_CODE_VIEW"
     
     echo -e "${C_GREEN}✔ Semua proteksi telah dipasang.${C_RESET}"
-    echo -e "\n${C_BOLD}Membersihkan cache Pterodactyl${C_RESET}"
-    if php artisan optimize:clear; then
-        echo -e "${C_GREEN}✔ Cache berhasil dibersihkan.${C_RESET}"
-    else
-        echo -e "${C_RED}✘ Gagal membersihkan cache.${C_RESET}"
-    fi
-    echo -e "\n${C_GREEN}${C_BOLD}===== Pemasangan Selesai! Fitur Anti Rusuh sudah aktif. =====${C_RESET}"
+    
+    # --- FIX: Pembersihan cache yang lebih menyeluruh ---
+    echo -e "\n${C_BOLD}Membersihkan dan membangun ulang cache Pterodactyl...${C_RESET}"
+    php artisan view:clear
+    php artisan config:clear
+    php artisan route:clear
+    php artisan cache:clear
+    php artisan config:cache
+    php artisan route:cache
+    echo -e "${C_GREEN}✔ Cache berhasil dioptimalkan.${C_RESET}"
+    # --- Akhir FIX ---
+
+    echo -e "\n${C_GREEN}${C_BOLD}===== Pemasangan Selesai! Fitur Anti Rusuh seharusnya sudah aktif. =====${C_RESET}"
 }
 
 # --- Fungsi Menu Utama ---
