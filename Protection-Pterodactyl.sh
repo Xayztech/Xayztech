@@ -66,24 +66,42 @@ uninstall_features() {
 }
 
 install_features() {
-    echo -e "\n${C_YELLOW}===== Memasang Fitur Keamanan Total (v5.3) =====${C_RESET}"
-    if ! backup_files; then return 1; fi
+    echo -e "\n${C_YELLOW}===== Memasang Fitur Replika Absolut =====${C_RESET}"
+    mkdir -p "$BACKUP_DIR"
+    LATEST_BACKUP=$(find "$BACKUP_DIR" -name "panel_backup_$(date +%Y%m%d)*.tar.gz" -print -quit)
+    if [ -n "$LATEST_BACKUP" ]; then
+        echo -e "${C_GREEN}Ditemukan backup untuk hari ini. Lewati pembuatan backup baru?${C_RESET}"
+        read -p "Jawab [Y/n]: " skip_backup
+        if [[ "$skip_backup" =~ ^[Nn]$ ]]; then
+            if ! backup_files; then return 1; fi
+        else
+            echo -e "${C_YELLOW}OK, melewati backup dan langsung melanjutkan instalasi...${C_RESET}"
+        fi
+    else
+        echo "Belum ada backup untuk hari ini. Menjalankan backup otomatis..."
+        if ! backup_files; then return 1; fi
+    fi
     cd "$PANEL_DIR" || { echo -e "${C_RED}Direktori $PANEL_DIR tidak ditemukan!${C_RESET}"; return 1; }
     echo -e "\n${C_BOLD}Memasang proteksi...${C_RESET}"
-    PROTECTION_CODE_DELETE_USER='if (Auth::user()->id != 1) { return redirect()->back()->withErrors(["error" => "Lu Siapa Mau Delete User Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By XΛYZ ƬΣCΉ V1"]); }'
-    PROTECTION_CODE_DELETE_SERVER='if (Auth::user()->id != 1) { return redirect()->back()->withErrors(["error" => "Lu Siapa Mau Delete Server Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By XΛYZ ƬΣCΉ V1"]); }'
-    PROTECTION_CODE_VIEW='if (Auth::user()->id != 1) { abort(403, "𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ PROTECTION - AKSES DITOLAK"); }'
-    UPDATE_USER_PROTECTION='if (Auth::user()->id != 1) { if ($user->email !== $request->input('\''email'\'') || $user->username !== $request->input('\''username'\'') || $user->name_first !== $request->input('\''name_first'\'') || $user->name_last !== $request->input('\''name_last'\'') || !empty($request->input('\''password'\'')) || $user->root_admin != $request->input('\''root_admin'\'')) { return redirect()->back()->withErrors(['\''error'\'' => '\''PERUBAHAN DITOLAK! Hanya user ID 1 yang dapat mengubah data sensitif pengguna. @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1'\'']); } }'
-    ANTI_INTIP_CODE='if ($server->owner_id !== Auth::id() && !Auth::user()->isRootAdmin()) { if (is_null($server->subusers()->where('\''user_id'\'', Auth::id())->first())) { abort(403, '\''AKSES DITOLAK! Dilarang Mengintip Server Milik Orang Lain. @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐'\''); } }'
+    PROTECTION_CODE_DELETE_USER='if ($request->user()->id !== 1) { throw new \Pterodactyl\Exceptions\DisplayException("Lu Siapa Mau Delet User Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"); }'
+    PROTECTION_CODE_DELETE_SERVER_SERVICE='$user = Auth::user(); if ($user && $user->id !== 1) { throw new \Pterodactyl\Exceptions\DisplayException("Lu Siapa Mau Delet Server Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"); }'
+    PROTECTION_CODE_VIEW='$user = Auth::user(); if (!$user || $user->id != 1) { abort(403, "𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ PROTECTION - AKSES DITOLAK"); }'
+    UPDATE_USER_PROTECTION='if ($request->user()->id !== 1) { $restricted = ["email", "username", "name_first", "name_last", "password", "root_admin"]; foreach ($restricted as $field) { if ($request->input($field) != $user->$field && $field != "password") { throw new \Pterodactyl\Exceptions\DisplayException("PERUBAHAN DITOLAK! Hanya user ID 1 yang dapat mengubah data sensitif pengguna."); } if ($field == "password" && !empty($request->input("password"))) { throw new \Pterodactyl\Exceptions\DisplayException("PERUBAHAN DITOLAK! Hanya user ID 1 yang dapat mengubah data sensitif pengguna."); } } }'
+    ANTI_INTIP_CODE_WEB='if ($server->owner_id !== $request->user()->id && !$request->user()->isRootAdmin()) { if (is_null($server->subusers()->where("user_id", $request->user()->id)->first())) { abort(403, "AKSES DITOLAK! Dilarang Mengintip Server Milik Orang Lain. @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"); } }'
+    ANTI_INTIP_CODE_API='$authUser = $request->user(); if ($authUser->id !== 1 && $server->owner_id !== $authUser->id) { abort(403, "Anda tidak diizinkan untuk mengakses server ini melalui API. Protection By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐"); }'
+    ANTI_DOWNLOAD_CODE_API='$authUser = $request->user(); if ($authUser->id !== 1 && $server->owner_id !== $authUser->id) { abort(403, "Anda tidak diizinkan untuk mengunduh file dari server ini melalui API. Protection By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐"); }'
     inject_code() {
         sed -i "/$2/s/{/{\n    $3/" "$1"
     }
-    echo " -> Melindungi Aksi Hapus/Ubah User & Server..."
-    inject_code "app/Http/Controllers/Admin/UserController.php" "public function destroy(User \$user)" "$PROTECTION_CODE_DELETE_USER"
+    echo " -> Melindungi Service Layer (Hapus Server)..."
+    inject_code "app/Services/Servers/ServerDeletionService.php" "public function handle(Server \$server)" "$PROTECTION_CODE_DELETE_SERVER_SERVICE"
+    echo " -> Melindungi Controller Aksi (Hapus/Ubah User)..."
+    inject_code "app/Http/Controllers/Admin/UserController.php" "public function destroy(Request \$request, User \$user)" "$PROTECTION_CODE_DELETE_USER"
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function update(UpdateUserRequest \$request, User \$user)" "$UPDATE_USER_PROTECTION"
-    inject_code "app/Http/Controllers/Admin/ServersController.php" "public function destroy(Server \$server)" "$PROTECTION_CODE_DELETE_SERVER"
-    echo " -> Memasang Fitur Anti-Intip Server..."
-    inject_code "app/Http/Controllers/Server/ServersController.php" "public function index(Request \$request, Server \$server)" "$ANTI_INTIP_CODE"
+    echo " -> Memasang Fitur Anti-Intip (Web & API)..."
+    inject_code "app/Http/Controllers/Server/ViewController.php" "public function index(Request \$request, Server \$server)" "$ANTI_INTIP_CODE_WEB"
+    inject_code "app/Http/Controllers/Api/Client/Servers/ServerController.php" "public function index(GetServerRequest \$request, Server \$server)" "$ANTI_INTIP_CODE_API"
+    inject_code "app/Http/Controllers/Api/Client/Servers/FileController.php" "public function download(Request \$request, Server \$server)" "$ANTI_DOWNLOAD_CODE_API"
     echo " -> Melindungi Semua Halaman Admin secara menyeluruh..."
     inject_code "app/Http/Controllers/Admin/LocationController.php" "public function index()" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function create(LocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function store(LocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function edit(Location \$location, UpdateLocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function update(UpdateLocationFormRequest \$request, Location \$location)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function destroy(Location \$location)" "$PROTECTION_CODE_VIEW";
     inject_code "app/Http/Controllers/Admin/NodesController.php" "public function index()" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function create()" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function store(StoreNodeRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function view(Node \$node)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function edit(Node \$node)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function update(UpdateNodeRequest \$request, Node \$node)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function destroy(Node \$node)" "$PROTECTION_CODE_VIEW";
@@ -101,8 +119,8 @@ main_menu() {
     clear
     display_title
     echo -e "${C_YELLOW}Pilih salah satu opsi:${C_RESET}"
-    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Keamanan (Anti Rusuh)"
-    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur (Restore Panel)${C_RESET}"
+    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Anti-Rusuh ( Protection )"
+    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur Anti Rusuh (Restore Panel)${C_RESET}"
     echo -e "  ${C_CYAN}3)${C_RESET} Buat Backup Manual"
     echo -e "  ${C_CYAN}4)${C_RESET} Keluar"
     echo ""
