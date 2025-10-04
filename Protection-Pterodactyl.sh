@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # --- Variabel Warna untuk Tampilan ---
 C_RESET='\033[0m'
 C_BOLD='\033[1m'
@@ -43,7 +44,7 @@ install_features() {
     # 1. Wajib Backup dulu
     echo -e "\n${C_BOLD}Langkah 1: Melakukan Backup Otomatis${C_RESET}"
     if ! backup_files; then
-        return 1 # Hentikan jika backup gagal
+        return 1
     fi
     sleep 2
 
@@ -52,32 +53,32 @@ install_features() {
 
     echo -e "\n${C_BOLD}Langkah 2: Memasang proteksi...${C_RESET}"
 
-    # PHP Code Snippet yang akan disisipkan (SUDAH DIPERBARUI)
+    # PHP Code Snippet
     PROTECTION_CODE='if (Auth::user()->id != 1) { return redirect()->back()->withErrors(["error" => "Lu Siapa Mau Delet User Lain Tolol?!Izin Dulu Sama Id 1 Kalo Mau Delet@Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); }'
     PROTECTION_CODE_SERVER='if (Auth::user()->id != 1) { return redirect()->back()->withErrors(["error" => "Lu Siapa Mau Delet Server Lain Tolol?!Izin Dulu Sama Id 1 Kalo Mau Delet@Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); }'
     PROTECTION_CODE_VIEW='if (Auth::user()->id != 1) { abort(403, "AKSES DITOLAK"); }'
     UPDATE_USER_PROTECTION='if (Auth::user()->id != 1) { if (!empty($request->input("password"))) { return redirect()->back()->withErrors(["error" => "Anti Ubah Data User Aktif! '\''password'\'' hanya bisa diubah oleh user ID 1 @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); } if ($user->email !== $request->input("email")) { return redirect()->back()->withErrors(["error" => "Anti Ubah Data User Aktif! '\''email'\'' hanya bisa diubah oleh user ID 1 @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); } }'
     
-    # --- Modifikasi File-file Controller ---
+    # --- Modifikasi File-file Controller (PATH SUDAH DIPERBAIKI) ---
     
-    # ◦ ANTI HAPUS USER
     echo " -> Memasang Anti Hapus User..."
     sed -i "/public function destroy(User \$user)/a \        ${PROTECTION_CODE}" app/Http/Controllers/Admin/UserController.php
 
-    # ◦ ANTI UBAH DATA USER (Password, Email, Nama)
     echo " -> Memasang Anti Ubah Data User..."
     sed -i "/public function update(UpdateUserRequest \$request, User \$user)/a \        ${UPDATE_USER_PROTECTION}" app/Http/Controllers/Admin/UserController.php
 
-    # ◦ ANTI HAPUS SERVER
     echo " -> Memasang Anti Hapus Server..."
-    sed -i "/public function destroy(DeleteServerRequest \$request, Server \$server)/a \        ${PROTECTION_CODE_SERVER}" app/Http/Controllers/Admin/Servers/ServerController.php
+    # FIX: Menggunakan ServersController.php tanpa sub-folder
+    sed -i "/public function destroy(Server \$server)/a \        ${PROTECTION_CODE_SERVER}" app/Http/Controllers/Admin/ServersController.php
 
-    # ◦ ANTI INTIP (VIEW) HALAMAN ADMIN
-    echo " -> Memasang Anti Intip Halaman (Nodes, Locations, Eggs, Settings)..."
-    sed -i "/public function index()/a \        ${PROTECTION_CODE_VIEW}" app/Http/Controllers/Admin/NodeController.php
+    echo " -> Memasang Anti Intip Halaman (Nodes, Locations, Settings)..."
+    # FIX: Menggunakan NodesController.php (dengan 's')
+    sed -i "/public function index()/a \        ${PROTECTION_CODE_VIEW}" app/Http/Controllers/Admin/NodesController.php
     sed -i "/public function index()/a \        ${PROTECTION_CODE_VIEW}" app/Http/Controllers/Admin/LocationController.php
-    sed -i "/public function view(Nest \$nest)/a \        ${PROTECTION_CODE_VIEW}" app/Http/Controllers/Admin/Nests/NestController.php
     sed -i "/public function index(IndexFormRequest \$request)/a \        ${PROTECTION_CODE_VIEW}" app/Http/Controllers/Admin/Settings/IndexController.php
+    
+    # CATATAN: Proteksi untuk Egg (NestController) tidak dapat dipasang karena direktorinya tidak terdeteksi.
+    # Namun fitur proteksi utama lainnya akan tetap berfungsi.
     
     echo -e "${C_GREEN}✔ Semua proteksi telah dipasang.${C_RESET}"
     sleep 1
@@ -93,7 +94,7 @@ install_features() {
     echo -e "\n${C_GREEN}${C_BOLD}===== Pemasangan Selesai! Fitur Anti Rusuh sudah aktif. =====${C_RESET}"
 }
 
-# --- Fungsi Menu Utama ---
+# --- Fungsi Menu Utama (dan sisa skripnya sama) ---
 main_menu() {
     clear
     display_title
@@ -122,8 +123,6 @@ main_menu() {
     read -r
 }
 
-# --- Loop Utama Skrip ---
-# Memastikan skrip dijalankan sebagai root
 if [ "$(id -u)" -ne 0 ]; then
   echo -e "${C_RED}Skrip ini harus dijalankan sebagai root. Coba gunakan 'sudo bash nama_file_skrip.sh'${C_RESET}"
   exit 1
