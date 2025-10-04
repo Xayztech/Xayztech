@@ -92,12 +92,12 @@ install_features() {
     inject_code() {
         sed -i "/$2/s/{/{\n    $3/" "$1"
     }
-    echo " -> Melindungi Service Layer (Hapus Server)..."
+    echo " -> Melindungi Service Layer..."
     inject_code "app/Services/Servers/ServerDeletionService.php" "public function handle(Server \$server)" "$PROTECTION_CODE_DELETE_SERVER_SERVICE"
-    echo " -> Melindungi Controller Aksi (Hapus/Ubah User)..."
+    echo " -> Melindungi Controller Aksi..."
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function destroy(Request \$request, User \$user)" "$PROTECTION_CODE_DELETE_USER"
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function update(UpdateUserRequest \$request, User \$user)" "$UPDATE_USER_PROTECTION"
-    echo " -> Memasang Fitur Anti-Intip (melalui API)..."
+    echo " -> Memasang Fitur Protection Extra..."
     inject_code "app/Http/Controllers/Api/Client/Servers/ServerController.php" "public function index(GetServerRequest \$request, Server \$server)" "$ANTI_INTIP_CODE_API"
     inject_code "app/Http/Controllers/Api/Client/Servers/FileController.php" "public function download(Request \$request, Server \$server)" "$ANTI_DOWNLOAD_CODE_API"
     echo " -> Melindungi Semua Halaman Admin secara menyeluruh..."
@@ -117,8 +117,8 @@ main_menu() {
     clear
     display_title
     echo -e "${C_YELLOW}Pilih salah satu opsi:${C_RESET}"
-    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur (Final)"
-    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur (Restore Panel)${C_RESET}"
+    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Anti Rusuh ( Protection )"
+    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur Anti Rusuh (Restore Panel)${C_RESET}"
     echo -e "  ${C_CYAN}3)${C_RESET} Buat Backup Manual"
     echo -e "  ${C_CYAN}4)${C_RESET} Keluar"
     echo ""
