@@ -11,7 +11,7 @@ BACKUP_DIR="/root/pterodactyl_backups"
 
 display_title() {
     echo -e "${C_BOLD}${C_CYAN}╔══════════════════════════════════════════════════╗${C_RESET}"
-    echo -e "${C_BOLD}${C_YELLOW}       POWERED BY 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐                      ${C_RESET}"
+    echo -e "${C_BOLD}${C_YELLOW}       POWERED BY XΛYZ ƬΣCΉ                      ${C_RESET}"
     echo -e "${C_BOLD}${C_CYAN}╚══════════════════════════════════════════════════╝${C_RESET}"
     echo ""
 }
@@ -27,7 +27,7 @@ restart_php_fpm() {
             echo -e "${C_RED}✘ Gagal merestart $PHP_SERVICE.${C_RESET}"
         fi
     else
-        echo -e "${C_YELLOW}⚠️ Tidak dapat mendeteksi service PHP-FPM. Jika fitur tidak aktif, restart manual (contoh: sudo systemctl restart php8.1-fpm).${C_RESET}"
+        echo -e "${C_YELLOW}⚠️ Tidak dapat mendeteksi service PHP-FPM. Jika fitur tidak aktif, restart manual (contoh: sudo systemctl restart php8.3-fpm).${C_RESET}"
     fi
 }
 
@@ -66,7 +66,7 @@ uninstall_features() {
 }
 
 install_features() {
-    echo -e "\n${C_YELLOW}===== Memasang Fitur Replika Absolut =====${C_RESET}"
+    echo -e "\n${C_YELLOW}===== Memasang Fitur Anti Rusuh ( Protection ) V1 =====${C_RESET}"
     mkdir -p "$BACKUP_DIR"
     LATEST_BACKUP=$(find "$BACKUP_DIR" -name "panel_backup_$(date +%Y%m%d)*.tar.gz" -print -quit)
     if [ -n "$LATEST_BACKUP" ]; then
@@ -83,13 +83,12 @@ install_features() {
     fi
     cd "$PANEL_DIR" || { echo -e "${C_RED}Direktori $PANEL_DIR tidak ditemukan!${C_RESET}"; return 1; }
     echo -e "\n${C_BOLD}Memasang proteksi...${C_RESET}"
-    PROTECTION_CODE_DELETE_USER='if ($request->user()->id !== 1) { throw new \Pterodactyl\Exceptions\DisplayException("Lu Siapa Mau Delet User Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"); }'
-    PROTECTION_CODE_DELETE_SERVER_SERVICE='$user = Auth::user(); if ($user && $user->id !== 1) { throw new \Pterodactyl\Exceptions\DisplayException("Lu Siapa Mau Delet Server Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"); }'
-    PROTECTION_CODE_VIEW='$user = Auth::user(); if (!$user || $user->id != 1) { abort(403, "𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ PROTECTION - AKSES DITOLAK"); }'
+    PROTECTION_CODE_DELETE_USER='if ($request->user()->id !== 1) { throw new \Pterodactyl\Exceptions\DisplayException("Lu Siapa Mau Delet User Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By XΛYZ ƬΣCΉ V1"); }'
+    PROTECTION_CODE_DELETE_SERVER_SERVICE='$user = Auth::user(); if ($user && $user->id !== 1) { throw new \Pterodactyl\Exceptions\DisplayException("Lu Siapa Mau Delet Server Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By XΛYZ ƬΣCΉ V1"); }'
+    PROTECTION_CODE_VIEW='$user = Auth::user(); if (!$user || $user->id != 1) { abort(403, "XΛYZ ƬΣCΉ PROTECTION - AKSES DITOLAK"); }'
     UPDATE_USER_PROTECTION='if ($request->user()->id !== 1) { $restricted = ["email", "username", "name_first", "name_last", "password", "root_admin"]; foreach ($restricted as $field) { if ($request->input($field) != $user->$field && $field != "password") { throw new \Pterodactyl\Exceptions\DisplayException("PERUBAHAN DITOLAK! Hanya user ID 1 yang dapat mengubah data sensitif pengguna."); } if ($field == "password" && !empty($request->input("password"))) { throw new \Pterodactyl\Exceptions\DisplayException("PERUBAHAN DITOLAK! Hanya user ID 1 yang dapat mengubah data sensitif pengguna."); } } }'
-    ANTI_INTIP_CODE_WEB='if ($server->owner_id !== $request->user()->id && !$request->user()->isRootAdmin()) { if (is_null($server->subusers()->where("user_id", $request->user()->id)->first())) { abort(403, "AKSES DITOLAK! Dilarang Mengintip Server Milik Orang Lain. @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"); } }'
-    ANTI_INTIP_CODE_API='$authUser = $request->user(); if ($authUser->id !== 1 && $server->owner_id !== $authUser->id) { abort(403, "Anda tidak diizinkan untuk mengakses server ini melalui API. Protection By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐"); }'
-    ANTI_DOWNLOAD_CODE_API='$authUser = $request->user(); if ($authUser->id !== 1 && $server->owner_id !== $authUser->id) { abort(403, "Anda tidak diizinkan untuk mengunduh file dari server ini melalui API. Protection By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐"); }'
+    ANTI_INTIP_CODE_API='$authUser = $request->user(); if ($authUser->id !== 1 && $server->owner_id !== $authUser->id) { abort(403, "𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ Protection - Ngapain ngintip? Mikir Kidz"); }'
+    ANTI_DOWNLOAD_CODE_API='$authUser = $request->user(); if ($authUser->id !== 1 && $server->owner_id !== $authUser->id) { abort(403, "𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ Protection - Si Monyet Berusaha Download.. wkwkwkwkwkwk cuakzz..."); }'
     inject_code() {
         sed -i "/$2/s/{/{\n    $3/" "$1"
     }
@@ -98,8 +97,7 @@ install_features() {
     echo " -> Melindungi Controller Aksi (Hapus/Ubah User)..."
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function destroy(Request \$request, User \$user)" "$PROTECTION_CODE_DELETE_USER"
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function update(UpdateUserRequest \$request, User \$user)" "$UPDATE_USER_PROTECTION"
-    echo " -> Memasang Fitur Anti-Intip (Web & API)..."
-    inject_code "app/Http/Controllers/Server/ViewController.php" "public function index(Request \$request, Server \$server)" "$ANTI_INTIP_CODE_WEB"
+    echo " -> Memasang Fitur Anti-Intip (melalui API)..."
     inject_code "app/Http/Controllers/Api/Client/Servers/ServerController.php" "public function index(GetServerRequest \$request, Server \$server)" "$ANTI_INTIP_CODE_API"
     inject_code "app/Http/Controllers/Api/Client/Servers/FileController.php" "public function download(Request \$request, Server \$server)" "$ANTI_DOWNLOAD_CODE_API"
     echo " -> Melindungi Semua Halaman Admin secara menyeluruh..."
@@ -119,8 +117,8 @@ main_menu() {
     clear
     display_title
     echo -e "${C_YELLOW}Pilih salah satu opsi:${C_RESET}"
-    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Anti-Rusuh ( Protection )"
-    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur Anti Rusuh (Restore Panel)${C_RESET}"
+    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur (Final)"
+    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur (Restore Panel)${C_RESET}"
     echo -e "  ${C_CYAN}3)${C_RESET} Buat Backup Manual"
     echo -e "  ${C_CYAN}4)${C_RESET} Keluar"
     echo ""
