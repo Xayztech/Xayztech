@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instalasi Proteksi Anti-Rusuh Pterodactyl</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script> </head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="logo">XΛYZ ƬΣCΉ</div>
+            <h1>Proteksi Anti-Rusuh Panel Pterodactyl</h1>
+            <p class="subtitle">Amankan panel Anda dari tindakan yang tidak diinginkan dengan satu baris perintah.</p>
+        </header>
+
+        <main>
+            <section id="fungsi">
+                <h2><i class="fas fa-shield-alt"></i> Apa Fungsinya?</h2>
+                <p>
+                    Skrip ini adalah sebuah alat keamanan yang dirancang khusus untuk Pterodactyl Panel. Tujuannya adalah untuk membatasi aksi-aksi destruktif yang bisa dilakukan oleh admin selain <strong>Admin Utama (User ID 1)</strong>. Ini sangat berguna jika Anda memiliki beberapa admin dan ingin mencegah kesalahan atau penyalahgunaan wewenang.
+                </p>
+                <ul>
+                    <li>🛡️ <strong>Anti Hapus User & Server:</strong> Mencegah admin lain menghapus user atau server penting.</li>
+                    <li>🔒 <strong>Anti Ubah Data Kritis:</strong> Melindungi email dan password user dari perubahan yang tidak sah.</li>
+                    <li>🚫 <strong>Anti Intip Halaman Admin:</strong> Membatasi akses ke halaman sensitif seperti Nodes, Locations, dan Settings.</li>
+                    <li>🔄 <strong>Manajemen Mudah:</strong> Dilengkapi menu untuk memasang, melepas (restore), dan backup manual.</li>
+                </ul>
+            </section>
+
+            <section id="instalasi">
+                <h2><i class="fas fa-terminal"></i> Cara Pemasangan</h2>
+                <p>
+                    Cukup masuk ke terminal server Anda sebagai <strong>root</strong>, lalu salin dan jalankan perintah di bawah ini.
+                </p>
+                <div class="code-container">
+                    <pre><code id="install-command">bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-Pterodactyl.sh)</code></pre>
+                    <button id="copy-button" title="Salin ke Clipboard">
+                        <i class="far fa-copy"></i>
+                    </button>
+                </div>
+            </section>
+            
+            <section id="tutorial">
+                <h2><i class="fas fa-book-open"></i> Instruksi Skrip</h2>
+                <p>Setelah dieksekusi, Anda akan disambut oleh menu interaktif:</p>
+                <ol>
+                    <li><strong>Pasang Fitur Anti Rusuh:</strong> Memulai instalasi. Skrip akan otomatis mengecek & membuat backup sebelum memodifikasi panel.</li>
+                    <li><strong>Lepas Fitur Anti Rusuh (Restore Panel):</strong> Mengembalikan panel ke kondisi semula dengan memilih file backup yang tersedia.</li>
+                    <li><strong>Buat Backup Manual:</strong> Hanya menjalankan fungsi backup tanpa instalasi.</li>
+                    <li><strong>Keluar:</strong> Menutup skrip.</li>
+                </ol>
+            </section>
+
+            <section id="peringatan">
+                <h2><i class="fas fa-exclamation-triangle"></i> Peringatan Penting</h2>
+                <p>
+                    Jika Anda melakukan <strong>update Pterodactyl Panel</strong>, file-file yang telah dimodifikasi akan kembali ke semula. Ini berarti fitur proteksi akan hilang. Anda perlu menjalankan ulang perintah instalasi ini setelah update.
+                </p>
+            </section>
+        </main>
+
+        <footer>
+            <p>Dibuat dan dikelola oleh XΛYZ ƬΣCΉ</p>
+        </footer>
+    </div>
+
+    <script>
+        const copyButton = document.getElementById('copy-button');
+        const commandText = document.getElementById('install-command').innerText;
+
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(commandText).then(() => {
+                copyButton.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    copyButton.innerHTML = '<i class="far fa-copy"></i>';
+                }, 2000);
+            }).catch(err => {
+                console.error('Gagal menyalin: ', err);
+            });
+        });
+    </script>
+    <script src="https://kit.fontawesome.com/5e6b45e95a.js" crossorigin="anonymous"></script>
+</body>
+  </html>
