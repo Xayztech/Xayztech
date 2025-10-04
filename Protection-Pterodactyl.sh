@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# --- Variabel Warna & Direktori ---
 C_RESET='\033[0m'
 C_BOLD='\033[1m'
 C_RED='\033[0;31m'
@@ -10,7 +9,6 @@ C_CYAN='\033[0;36m'
 PANEL_DIR="/var/www/pterodactyl"
 BACKUP_DIR="/root/pterodactyl_backups"
 
-# --- Fungsi untuk Menampilkan Judul ---
 display_title() {
     echo -e "${C_BOLD}${C_CYAN}╔══════════════════════════════════════════════════╗${C_RESET}"
     echo -e "${C_BOLD}${C_YELLOW}       POWERED BY XΛYZ ƬΣCΉ                      ${C_RESET}"
@@ -18,134 +16,125 @@ display_title() {
     echo ""
 }
 
-# --- Fungsi untuk Backup ---
-backup_files() {
-    echo -e "${C_YELLOW}Memulai proses backup direktori panel...${C_RESET}"
-    mkdir -p "$BACKUP_DIR"
-    FILENAME="$BACKUP_DIR/panel_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
-
-    if tar -czvf "$FILENAME" -C "$(dirname "$PANEL_DIR")" "$(basename "$PANEL_DIR")" > /dev/null 2>&1; then
-        echo -e "${C_GREEN}✔ Backup berhasil dibuat di:${C_RESET} ${C_CYAN}$FILENAME${C_RESET}"
-        return 0
+restart_php_fpm() {
+    echo -e "\n${C_BOLD}Langkah Krusial: Merestart service PHP-FPM...${C_RESET}"
+    echo "Ini untuk memaksa server membaca ulang semua file yang sudah diubah."
+    PHP_SERVICE=$(systemctl list-units --type=service | grep -o 'php[0-9]\.[0-9]-fpm\.service' | head -n 1)
+    if [ -n "$PHP_SERVICE" ]; then
+        echo " -> Merestart ${C_CYAN}$PHP_SERVICE${C_RESET}..."
+        if systemctl restart "$PHP_SERVICE"; then
+            echo -e "${C_GREEN}✔ Service PHP-FPM berhasil direstart.${C_RESET}"
+        else
+            echo -e "${C_RED}✘ Gagal merestart $PHP_SERVICE.${C_RESET}"
+        fi
     else
-        echo -e "${C_RED}✘ Gagal membuat backup. Proses dibatalkan.${C_RESET}"
-        return 1
+        echo -e "${C_YELLOW}⚠️ Tidak dapat mendeteksi service PHP-FPM. Jika fitur tidak aktif, restart manual (contoh: sudo systemctl restart php8.3-fpm).${C_RESET}"
     fi
 }
 
-# --- Fungsi Untuk Melepas Fitur / Restore ---
+backup_files() {
+    echo -e "${C_YELLOW}Memulai proses backup...${C_RESET}"
+    mkdir -p "$BACKUP_DIR"
+    FILENAME="$BACKUP_DIR/panel_backup_$(date +%Y%m%d_%H%M%S).tar.gz"
+    if tar -czvf "$FILENAME" -C "$(dirname "$PANEL_DIR")" "$(basename "$PANEL_DIR")" > /dev/null 2>&1; then
+        echo -e "${C_GREEN}✔ Backup berhasil dibuat di: ${C_CYAN}$FILENAME${C_RESET}"
+        return 0
+    else
+        echo -e "${C_RED}✘ Gagal membuat backup.${C_RESET}"; return 1
+    fi
+}
+
 uninstall_features() {
     echo -e "\n${C_YELLOW}===== Memulai Proses Melepas Fitur (Restore Panel) =====${C_RESET}"
-    echo -e "${C_RED}${C_BOLD}PERINGATAN: Operasi ini akan menimpa file panel Anda saat ini!${C_RESET}\n"
     mapfile -t backups < <(ls -1t "$BACKUP_DIR"/panel_backup_*.tar.gz 2>/dev/null)
     if [ ${#backups[@]} -eq 0 ]; then echo -e "${C_RED}Tidak ada file backup valid yang ditemukan.${C_RESET}"; return; fi
-
     echo -e "${C_YELLOW}Pilih file backup untuk dipulihkan:${C_RESET}"
-    for i in "${!backups[@]}"; do
-        filename=$(basename "${backups[$i]}")
-        echo "  ${C_CYAN}$((i+1)))${C_RESET} $filename"
-    done
-    echo ""
+    for i in "${!backups[@]}"; do echo "  ${C_CYAN}$((i+1)))${C_RESET} $(basename "${backups[$i]}")"; done
     read -p "Masukkan nomor backup pilihan Anda: " choice
     if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt ${#backups[@]} ]; then echo -e "${C_RED}Pilihan tidak valid.${C_RESET}"; return; fi
     SELECTED_BACKUP="${backups[$((choice-1))]}"
-    echo -e "Anda memilih untuk restore dari: ${C_CYAN}$(basename "$SELECTED_BACKUP")${C_RESET}"
-    read -p "ANDA YAKIN? Ketik 'YA' untuk melanjutkan: " confirmation
+    read -p "ANDA YAKIN ingin menimpa panel dengan backup $(basename "$SELECTED_BACKUP")? Ketik 'YA': " confirmation
     if [ "$confirmation" != "YA" ]; then echo -e "${C_YELLOW}Proses restore dibatalkan.${C_RESET}"; return; fi
-
     echo -e "\n${C_YELLOW}Memulai proses restore...${C_RESET}"
     rm -rf "$PANEL_DIR"
     if tar -xzvf "$SELECTED_BACKUP" -C "$(dirname "$PANEL_DIR")"; then
-        echo " -> Membersihkan dan membangun ulang cache..."
         (cd "$PANEL_DIR" && php artisan config:clear && php artisan view:clear && php artisan route:clear && php artisan config:cache)
-        echo -e "\n${C_GREEN}${C_BOLD}✔ RESTORE SELESAI! Panel telah kembali ke kondisi semula.${C_RESET}"
+        restart_php_fpm
+        echo -e "\n${C_GREEN}${C_BOLD}✔ RESTORE SELESAI! Panel telah kembali normal.${C_RESET}"
     else
         echo -e "\n${C_RED}✘ Gagal mengekstrak file backup!${C_RESET}"
     fi
 }
 
-# --- Fungsi untuk Instalasi Fitur ---
 install_features() {
-    echo -e "\n${C_YELLOW}===== Memulai Pemasangan Fitur Anti Rusuh =====${C_RESET}"
-    mkdir -p "$BACKUP_DIR"
-    LATEST_BACKUP=$(find "$BACKUP_DIR" -name "panel_backup_$(date +%Y%m%d)*.tar.gz" -print -quit)
-    if [ -n "$LATEST_BACKUP" ]; then
-        echo -e "${C_GREEN}Ditemukan backup untuk hari ini. Lanjut tanpa backup baru?${C_RESET}"
-        read -p "Jawab [Y/n]: " skip_backup
-        if [[ "$skip_backup" =~ ^[Nn]$ ]]; then
-            if ! backup_files; then return 1; fi
-        else
-            echo -e "${C_YELLOW}OK, melewati backup dan langsung melanjutkan instalasi...${C_RESET}"
-        fi
-    else
-        echo "Belum ada backup untuk hari ini. Menjalankan backup otomatis..."
-        if ! backup_files; then return 1; fi
-    fi
-    
-    sleep 1
+    echo -e "\n${C_YELLOW}===== Memasang Fitur Edisi Teman Anda (v5.0) =====${C_RESET}"
+    if ! backup_files; then return 1; fi
     cd "$PANEL_DIR" || { echo -e "${C_RED}Direktori $PANEL_DIR tidak ditemukan!${C_RESET}"; return 1; }
     echo -e "\n${C_BOLD}Memasang proteksi...${C_RESET}"
-
-    # PHP Code Snippets
-    PROTECTION_CODE_DELETE_USER='if (Auth::user()->id != 1) { return redirect()->back()->withErrors(["error" => "Lu Siapa Mau Delet User Lain Tolol?!Izin Dulu Sama Id 1 Kalo Mau Delet@Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); }'
-    PROTECTION_CODE_DELETE_SERVER='if (Auth::user()->id != 1) { return redirect()->back()->withErrors(["error" => "Lu Siapa Mau Delet Server Lain Tolol?!Izin Dulu Sama Id 1 Kalo Mau Delet@Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); }'
-    PROTECTION_CODE_VIEW='if (Auth::user()->id != 1) { abort(403, "AKSES DITOLAK"); }'
+    PROTECTION_CODE_DELETE_USER='if (Auth::user()->id != 1) { return redirect()->back()->withErrors(["error" => "Lu Siapa Mau Delet User Lain Tolol?!Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); }'
+    PROTECTION_CODE_DELETE_SERVER='if (Auth::user()->id != 1) { return redirect()->back()->withErrors(["error" => "Lu Siapa Mau Delet Server Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); }'
+    PROTECTION_CODE_VIEW='if (Auth::user()->id != 1) { abort(403, "𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ PROTECTION - AKSES DITOLAK"); }'
     UPDATE_USER_PROTECTION='if (Auth::user()->id != 1) { if (!empty($request->input("password"))) { return redirect()->back()->withErrors(["error" => "Anti Ubah Data User Aktif! '\''password'\'' hanya bisa diubah oleh user ID 1 @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); } if ($user->email !== $request->input("email")) { return redirect()->back()->withErrors(["error" => "Anti Ubah Data User Aktif! '\''email'\'' hanya bisa diubah oleh user ID 1 @Protect By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V1"]); } }'
-    
+    ANTI_INTIP_CODE='if ($server->owner_id !== Auth::id() && !Auth::user()->isRootAdmin()) { if (is_null($server->subusers()->where('\''user_id'\'', Auth::id())->first())) { abort(403, '\''𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ Protection - WKWKW MAU NGINTIP KAN? TOLOL'\''); } }'
     inject_code() {
-        local file=$1
-        local function_signature=$2
-        local code_to_inject=$3
-        sed -i "/${function_signature}/s/{/{\n${code_to_inject}/" "$file"
+        sed -i "/$2/s/{/{\n    $3/" "$1"
     }
-
-    # Modifikasi file-file controller
+    echo " -> Melindungi Aksi Hapus/Ubah User & Server..."
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function destroy(User \$user)" "$PROTECTION_CODE_DELETE_USER"
     inject_code "app/Http/Controllers/Admin/UserController.php" "public function update(UpdateUserRequest \$request, User \$user)" "$UPDATE_USER_PROTECTION"
     inject_code "app/Http/Controllers/Admin/ServersController.php" "public function destroy(Server \$server)" "$PROTECTION_CODE_DELETE_SERVER"
-    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function index()" "$PROTECTION_CODE_VIEW"
+    echo " -> Memasang Fitur Anti-Intip Server..."
+    inject_code "app/Http/Controllers/Server/ServerController.php" "public function index(Request \$request, Server \$server)" "$ANTI_INTIP_CODE"
+    echo " -> Melindungi Semua Halaman Admin (Locations, Nodes, Nests, Settings)..."
     inject_code "app/Http/Controllers/Admin/LocationController.php" "public function index()" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/LocationController.php" "public function create(LocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/LocationController.php" "public function store(LocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/LocationController.php" "public function edit(Location \$location, UpdateLocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/LocationController.php" "public function update(UpdateLocationFormRequest \$request, Location \$location)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/LocationController.php" "public function destroy(Location \$location)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function index()" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function create()" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function store(StoreNodeRequest \$request)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function view(Node \$node)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function edit(Node \$node)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function update(UpdateNodeRequest \$request, Node \$node)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function destroy(Node \$node)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function index()" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function create()" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function store(StoreNestFormRequest \$request)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function view(Nest \$nest)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function edit(Nest \$nest)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function update(UpdateNestFormRequest \$request, Nest \$nest)" "$PROTECTION_CODE_VIEW"
+    inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function destroy(Nest \$nest)" "$PROTECTION_CODE_VIEW"
     inject_code "app/Http/Controllers/Admin/Settings/IndexController.php" "public function index(IndexFormRequest \$request)" "$PROTECTION_CODE_VIEW"
-    
+    inject_code "app/Http/Controllers/Admin/Settings/IndexController.php" "public function update(IndexFormRequest \$request)" "$PROTECTION_CODE_VIEW"
     echo -e "${C_GREEN}✔ Semua proteksi telah dipasang.${C_RESET}"
-    
-    # --- FIX: Pembersihan cache yang lebih menyeluruh ---
     echo -e "\n${C_BOLD}Membersihkan dan membangun ulang cache Pterodactyl...${C_RESET}"
-    php artisan view:clear
-    php artisan config:clear
-    php artisan route:clear
-    php artisan cache:clear
-    php artisan config:cache
-    php artisan route:cache
+    php artisan view:clear; php artisan config:clear; php artisan route:clear; php artisan cache:clear; php artisan config:cache; php artisan route:cache;
     echo -e "${C_GREEN}✔ Cache berhasil dioptimalkan.${C_RESET}"
-    # --- Akhir FIX ---
-
-    echo -e "\n${C_GREEN}${C_BOLD}===== Pemasangan Selesai! Fitur Anti Rusuh seharusnya sudah aktif. =====${C_RESET}"
+    restart_php_fpm
+    echo -e "\n${C_GREEN}${C_BOLD}===== PEMASANGAN SELESAI! Keamanan penuh telah aktif. =====${C_RESET}"
 }
 
-# --- Fungsi Menu Utama ---
 main_menu() {
     clear
     display_title
     echo -e "${C_YELLOW}Pilih salah satu opsi:${C_RESET}"
-    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Anti Rusuh"
-    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur Anti Rusuh (Restore Panel)${C_RESET}"
-    echo -e "  ${C_CYAN}3)${C_RESET} Buat Backup Manual"
-    echo -e "  ${C_CYAN}4)${C_RESET} Keluar"
+    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur (Edisi Teman Anda)"
+    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur (Restore Panel)${C_RESET}"
+    echo -e "  ${C_CYAN}3)${C_RESET} Keluar"
     echo ""
-    read -p "Masukkan pilihan Anda [1-4]: " choice
+    read -p "Masukkan pilihan Anda [1-3]: " choice
     case $choice in
         1) install_features ;;
         2) uninstall_features ;;
-        3) backup_files ;;
-        4) echo -e "${C_GREEN}Terima kasih telah menggunakan skrip ini! Sampai jumpa!${C_RESET}"; exit 0 ;;
-        *) echo -e "${C_RED}Pilihan tidak valid. Silakan coba lagi.${C_RESET}" ;;
+        3) echo -e "${C_GREEN}Sampai jumpa!${C_RESET}"; exit 0 ;;
+        *) echo -e "${C_RED}Pilihan tidak valid.${C_RESET}" ;;
     esac
     echo -e "\n${C_YELLOW}Tekan [Enter] untuk kembali ke menu...${C_RESET}"
     read -r
 }
 
-# --- Loop Utama Skrip ---
 if [ "$(id -u)" -ne 0 ]; then
   echo -e "${C_RED}Skrip ini harus dijalankan sebagai root.${C_RESET}"
   exit 1
