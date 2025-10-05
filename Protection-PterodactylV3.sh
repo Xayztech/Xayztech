@@ -27,7 +27,9 @@ echo -e "${RESET}"
 echo -e "${YELLOW}Pilih mode yang ingin dijalankan:${RESET}"
 echo -e "1) 🔐 Install Protect (Add Protect)"
 echo -e "2) ♻️ Restore Backup (Restore)"
-read -p "Masukkan pilihan (1/2): " MODE
+echo -e "3) 🔙 Kembali ke versi 1 (Utama)"
+echo -e "4) 🔙 Kembali ke versi 2"
+read -p "Masukkan pilihan (1/2/3/4): " MODE
 
 declare -A CONTROLLERS
 CONTROLLERS["NodeController.php"]="/var/www/pterodactyl/app/Http/Controllers/Admin/Nodes/NodeController.php"
@@ -132,8 +134,13 @@ elif [[ "$MODE" == "2" ]]; then
     yarn build:production --progress
 
     echo -e "\n${BLUE}✅ Restore selesai. Semua file dikembalikan ke versi asli.${RESET}"
-
+elif [[ "$MODE" == "3" ]]; then
+   bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-Pterodactyl.sh)
+    fi
+elif [[ "$MODE" == "4" ]]; then
+   bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV2.sh)
+    fi
 else
-    echo -e "${RED}❌ Pilihan tidak valid. Masukkan 1 atau 2.${RESET}"
+    echo -e "${RED}❌ Pilihan tidak valid. Masukkan 1 atau 2 atau 3 atau 4.${RESET}"
     exit 1
 fi
