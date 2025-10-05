@@ -136,10 +136,8 @@ elif [[ "$MODE" == "2" ]]; then
     echo -e "\n${BLUE}✅ Restore selesai. Semua file dikembalikan ke versi asli.${RESET}"
 elif [[ "$MODE" == "3" ]]; then
    bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-Pterodactyl.sh)
-    fi
 elif [[ "$MODE" == "4" ]]; then
    bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV2.sh)
-    fi
 else
     echo -e "${RED}❌ Pilihan tidak valid. Masukkan 1 atau 2 atau 3 atau 4.${RESET}"
     exit 1
