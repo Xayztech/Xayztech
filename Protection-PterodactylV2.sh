@@ -12,7 +12,7 @@ DEVELOPER="𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐"
 clear
 echo -e "${CYAN}${BOLD}"
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║          $DEVLOPER Protection + Panel Builder         ║"
+echo "║          $DEVELOPER Protection + Panel Builder         ║"
 echo "║                    Version $VERSION                       ║"
 echo "║                    Developer: $DEVELOPER                       ║"
 echo "╚══════════════════════════════════════════════════════╝"
@@ -21,7 +21,9 @@ echo -e "${RESET}"
 echo -e "${YELLOW}[1]${RESET} Pasang Protect & Build Panel"
 echo -e "${YELLOW}[2]${RESET} Restore dari Backup & Build Panel"
 echo -e "${YELLOW}[3]${RESET} Pasang Protect Admin"
-read -p "$(echo -e "${CYAN}Pilih opsi [1/2/3]: ${RESET}")" OPSI
+echo -e "${YELLOW}[4]${RESET} Kembali ke Versi 1 (utama)"
+echo -e "${YELLOW}[5]${RESET} Teleport ke Versi 3 Protection"
+read -p "$(echo -e "${CYAN}Pilih opsi [1/2/3/4/5]: ${RESET}")" OPSI
 
 CONTROLLER_USER="/var/www/pterodactyl/app/Http/Controllers/Admin/UserController.php"
 SERVICE_SERVER="/var/www/pterodactyl/app/Services/Servers/ServerDeletionService.php"
@@ -113,8 +115,12 @@ elif [ "$OPSI" = "2" ]; then
     echo -e "${GREEN}✅ Restore & build selesai.${RESET}"
 
 elif [ "$OPSI" = "3" ]; then
-    bash <(curl -s https://installer.pablocloud.biz.id/other/ireng.sh)
-
+    bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV3.sh)
+elif [ "$OPSI" = "4" ]; then
+    bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-Pterodactyl.sh)
+elif [ "$OPSI" = "5" ]; then
+    bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV3.sh)
+    
 else
     echo -e "${RED}❌ Opsi tidak valid.${RESET}"
 fi
