@@ -16,6 +16,18 @@ display_title() {
     echo ""
 }
 
+teleport_to_v2() {
+     echo -e "\n${C_BOLD} Teleport Ke Versi 2 Protection...${C_RESET}"
+     bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV2.sh)
+     fi
+}
+
+teleport_to_v3() {
+     echo -e "\n${C_BOLD} Teleport Ke Versi 2 Protection...${C_RESET}"
+     bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV3.sh)
+     fi
+}
+
 restart_php_fpm() {
     echo -e "\n${C_BOLD}Langkah Krusial: Merestart service PHP-FPM...${C_RESET}"
     PHP_SERVICE=$(systemctl list-units --type=service | grep -o 'php[0-9]\.[0-9]-fpm\.service' | head -n 1)
@@ -118,16 +130,20 @@ main_menu() {
     display_title
     echo -e "${C_YELLOW}Pilih salah satu opsi:${C_RESET}"
     echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Anti Rusuh ( Protection )"
-    echo -e "  ${C_CYAN}2)${C_RESET} ${C_RED}Lepas Fitur Anti Rusuh (Restore Panel)${C_RESET}"
-    echo -e "  ${C_CYAN}3)${C_RESET} Buat Backup Manual"
-    echo -e "  ${C_CYAN}4)${C_RESET} Keluar"
+    echo -e "  ${C_CYAN}2)${C_RESET} Teleport (Pindah) Ke Versi 2 Protection"
+    echo -e "  ${C_CYAN}3)${C_RESET} Teleport (Pindah) Ke Versi 3 Protection"
+    echo -e "  ${C_CYAN}4)${C_RESET} ${C_RED}Lepas Fitur Anti Rusuh (Restore Panel)${C_RESET}"
+    echo -e "  ${C_CYAN}5)${C_RESET} Buat Backup Manual"
+    echo -e "  ${C_CYAN}6)${C_RESET} Keluar"
     echo ""
-    read -p "Masukkan pilihan Anda [1-4]: " choice
+    read -p "Masukkan pilihan Anda [1-6]: " choice
     case $choice in
         1) install_features ;;
-        2) uninstall_features ;;
-        3) backup_files ;;
-        4) echo -e "${C_GREEN}Sampai jumpa!${C_RESET}"; exit 0 ;;
+        2) teleport_to_v2 ;;
+        3) teleport_to_v3 ;;
+        4) uninstall_features ;;
+        5) backup_files ;;
+        6) echo -e "${C_GREEN}Sampai jumpa!${C_RESET}"; exit 0 ;;
         *) echo -e "${C_RED}Pilihan tidak valid.${C_RESET}" ;;
     esac
     echo -e "\n${C_YELLOW}Tekan [Enter] untuk kembali ke menu...${C_RESET}"
