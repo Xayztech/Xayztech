@@ -19,13 +19,11 @@ display_title() {
 teleport_to_v2() {
      echo -e "\n${C_BOLD} Teleport Ke Versi 2 Protection...${C_RESET}"
      bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV2.sh)
-     fi
 }
 
 teleport_to_v3() {
      echo -e "\n${C_BOLD} Teleport Ke Versi 2 Protection...${C_RESET}"
      bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV3.sh)
-     fi
 }
 
 restart_php_fpm() {
