@@ -76,50 +76,36 @@ uninstall_features() {
 }
 
 install_features() {
-    echo -e "\n${C_YELLOW}===== Memasang Fitur Anti Rusuh ( Protection ) V1 =====${C_RESET}"
-    mkdir -p "$BACKUP_DIR"
-    LATEST_BACKUP=$(find "$BACKUP_DIR" -name "panel_backup_$(date +%Y%m%d)*.tar.gz" -print -quit)
-    if [ -n "$LATEST_BACKUP" ]; then
-        echo -e "${C_GREEN}Ditemukan backup untuk hari ini. Lewati pembuatan backup baru?${C_RESET}"
-        read -p "Jawab [Y/n]: " skip_backup
-        if [[ "$skip_backup" =~ ^[Nn]$ ]]; then
-            if ! backup_files; then return 1; fi
-        else
-            echo -e "${C_YELLOW}OK, melewati backup dan langsung melanjutkan instalasi...${C_RESET}"
-        fi
-    else
-        echo "Belum ada backup untuk hari ini. Menjalankan backup otomatis..."
-        if ! backup_files; then return 1; fi
+    echo -e "\n${C_YELLOW}===== Memasang Fitur (Metode Timpa File) =====${C_RESET}"
+    if ! backup_files; then return 1; fi
+
+    ZIP_URL="https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-Pterodactyl.zip"
+    TMP_FILE="/tmp/Protection-Pterodactyl.zip"
+
+    echo -e "\n${C_BOLD}Langkah 1: Mengunduh file proteksi...${C_RESET}"
+    if ! curl -Lo "$TMP_FILE" "$ZIP_URL"; then
+        echo -e "${C_RED}✘ Gagal mengunduh file dari URL. Pastikan URL benar dan server memiliki koneksi internet.${C_RESET}"
+        return 1
     fi
+    echo -e "${C_GREEN}✔ File berhasil diunduh.${C_RESET}"
+
+    echo -e "\n${C_BOLD}Langkah 2: Menimpa file panel dengan versi terproteksi...${C_RESET}"
+    if ! unzip -o "$TMP_FILE" -d /; then
+        echo -e "${C_RED}✘ Gagal mengekstrak atau menimpa file. Pastikan 'unzip' terinstall.${C_RESET}"
+        rm "$TMP_FILE"
+        return 1
+    fi
+    echo -e "${C_GREEN}✔ File panel berhasil ditimpa.${C_RESET}"
+    
+    rm "$TMP_FILE"
+
+    echo -e "\n${C_BOLD}Langkah 3: Membersihkan dan membangun ulang cache...${C_RESET}"
     cd "$PANEL_DIR" || { echo -e "${C_RED}Direktori $PANEL_DIR tidak ditemukan!${C_RESET}"; return 1; }
-    echo -e "\n${C_BOLD}Memasang proteksi...${C_RESET}"
-    PROTECTION_CODE_DELETE_USER='if ($request->user()->id !== 1) { throw new \Pterodactyl\Exceptions\DisplayException("Lu Siapa Mau Delet User Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By XΛYZ ƬΣCΉ V1"); }'
-    PROTECTION_CODE_DELETE_SERVER_SERVICE='$user = Auth::user(); if ($user && $user->id !== 1) { throw new \Pterodactyl\Exceptions\DisplayException("Lu Siapa Mau Delet Server Lain Tolol?! Izin Dulu Sama Id 1 Kalo Mau Delete @Protect By XΛYZ ƬΣCΉ V1"); }'
-    PROTECTION_CODE_VIEW='$user = Auth::user(); if (!$user || $user->id != 1) { abort(403, "XΛYZ ƬΣCΉ PROTECTION - AKSES DITOLAK"); }'
-    UPDATE_USER_PROTECTION='if ($request->user()->id !== 1) { $restricted = ["email", "username", "name_first", "name_last", "password", "root_admin"]; foreach ($restricted as $field) { if ($request->input($field) != $user->$field && $field != "password") { throw new \Pterodactyl\Exceptions\DisplayException("PERUBAHAN DITOLAK! Hanya user ID 1 yang dapat mengubah data sensitif pengguna."); } if ($field == "password" && !empty($request->input("password"))) { throw new \Pterodactyl\Exceptions\DisplayException("PERUBAHAN DITOLAK! Hanya user ID 1 yang dapat mengubah data sensitif pengguna."); } } }'
-    ANTI_INTIP_CODE_API='$authUser = $request->user(); if ($authUser->id !== 1 && $server->owner_id !== $authUser->id) { abort(403, "𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ Protection - Ngapain ngintip? Mikir Kidz"); }'
-    ANTI_DOWNLOAD_CODE_API='$authUser = $request->user(); if ($authUser->id !== 1 && $server->owner_id !== $authUser->id) { abort(403, "𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ Protection - Si Monyet Berusaha Download.. wkwkwkwkwkwk cuakzz..."); }'
-    inject_code() {
-        sed -i "/$2/s/{/{\n    $3/" "$1"
-    }
-    echo " -> Melindungi Service Layer..."
-    inject_code "app/Services/Servers/ServerDeletionService.php" "public function handle(Server \$server)" "$PROTECTION_CODE_DELETE_SERVER_SERVICE"
-    echo " -> Melindungi Controller Aksi..."
-    inject_code "app/Http/Controllers/Admin/UserController.php" "public function destroy(Request \$request, User \$user)" "$PROTECTION_CODE_DELETE_USER"
-    inject_code "app/Http/Controllers/Admin/UserController.php" "public function update(UpdateUserRequest \$request, User \$user)" "$UPDATE_USER_PROTECTION"
-    echo " -> Memasang Fitur Protection Extra..."
-    inject_code "app/Http/Controllers/Api/Client/Servers/ServerController.php" "public function index(GetServerRequest \$request, Server \$server)" "$ANTI_INTIP_CODE_API"
-    inject_code "app/Http/Controllers/Api/Client/Servers/FileController.php" "public function download(Request \$request, Server \$server)" "$ANTI_DOWNLOAD_CODE_API"
-    echo " -> Melindungi Semua Halaman Admin secara menyeluruh..."
-    inject_code "app/Http/Controllers/Admin/LocationController.php" "public function index()" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function create(LocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function store(LocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function edit(Location \$location, UpdateLocationFormRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function update(UpdateLocationFormRequest \$request, Location \$location)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/LocationController.php" "public function destroy(Location \$location)" "$PROTECTION_CODE_VIEW";
-    inject_code "app/Http/Controllers/Admin/NodesController.php" "public function index()" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function create()" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function store(StoreNodeRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function view(Node \$node)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function edit(Node \$node)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function update(UpdateNodeRequest \$request, Node \$node)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/NodesController.php" "public function destroy(Node \$node)" "$PROTECTION_CODE_VIEW";
-    inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function index()" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function create()" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function store(StoreNestFormRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function view(Nest \$nest)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function edit(Nest \$nest)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function update(UpdateNestFormRequest \$request, Nest \$nest)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/Nests/NestController.php" "public function destroy(Nest \$nest)" "$PROTECTION_CODE_VIEW";
-    inject_code "app/Http/Controllers/Admin/Settings/IndexController.php" "public function index(IndexFormRequest \$request)" "$PROTECTION_CODE_VIEW"; inject_code "app/Http/Controllers/Admin/Settings/IndexController.php" "public function update(IndexFormRequest \$request)" "$PROTECTION_CODE_VIEW";
-    echo -e "${C_GREEN}✔ Semua proteksi telah dipasang.${C_RESET}"
-    echo -e "\n${C_BOLD}Membersihkan dan membangun ulang cache Pterodactyl...${C_RESET}"
     php artisan view:clear; php artisan config:clear; php artisan route:clear; php artisan cache:clear; php artisan config:cache; php artisan route:cache;
     echo -e "${C_GREEN}✔ Cache berhasil dioptimalkan.${C_RESET}"
+    
     restart_php_fpm
+    
     echo -e "\n${C_GREEN}${C_BOLD}===== PEMASANGAN SELESAI! Keamanan penuh telah aktif. =====${C_RESET}"
 }
 
