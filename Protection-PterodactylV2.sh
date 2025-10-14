@@ -42,7 +42,7 @@ if [ "$OPSI" = "1" ]; then
     in_func == 1 && /^\s*{/ {
         print;
         print "        if ($request->user()->id !== " admin_id ") {";
-        print "            throw new DisplayException(\"Lu Siapa Mau Delete User Lain Tolol? Izin Dulu Sama Id 1 Kalo Mau Delete @Protection By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V'"$VERSION"')\");";
+        print "            throw new DisplayException(\"Lu Siapa Mau Delete User Lain Tolol? Izin Dulu Sama Id 1 Kalo Mau Delete. Protection By Xayz Tech V'"$VERSION"')\");";
         print "        }";
         in_func = 0; next;
     }
@@ -76,7 +76,7 @@ BEGIN {
         print;
         print "        \$user = Auth::user();";
         print "        if (\$user && \$user->id !== " admin_id ") {";
-        print "            throw new DisplayException(\"Lu Siapa Mau Delete Server Lain Tolol? Izin Dulu Sama Id 1 Kalo Mau Delete © Protection By 𝗫Λ𝗬𝗭 Ƭ̀̍Σͫ̾C̑̈Ή̐ V'"$VERSION"')\");";
+        print "            throw new DisplayException(\"Lu Siapa Mau Delete Server Lain Tolol? Izin Dulu Sama Id 1 Kalo Mau Delete. Protection By Xayz Tech V'"$VERSION"')\");";
         print "        }";
         in_func = 0; next;
     }
