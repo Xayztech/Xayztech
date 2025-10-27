@@ -1,69 +1,68 @@
 #!/bin/bash
 
-REPO_TUJUAN_URL="https://github.com/Xayztech/minecraft122.git"
-SOURCE_PATH_IN_CURRENT_REPO="a4/packs"
-DEST_PATH_IN_TARGET_REPO="PvPmc/packs"
-TEMP_CLONE_DIR="repo-tujuan-temp"
+REPO_SUMBER_URL="https://github.com/happinessad/html.git"
+SOURCE_PATH_IN_REMOTE_REPO="a4/packs"
+DEST_PATH_IN_CURRENT_REPO="PvPmc/packs"
+TEMP_CLONE_DIR="repo-sumber-temp"
 
-echo "🔄 Memulai proses penyalinan..."
+echo "🔄 Memulai proses pengambilan file..."
 
-CURRENT_WORKSPACE_DIR=$(pwd)
-SOURCE_FULL_PATH="$CURRENT_WORKSPACE_DIR/$SOURCE_PATH_IN_CURRENT_REPO"
-
-if [ ! -d "$SOURCE_FULL_PATH" ]; then
-    echo "❌ ERROR: Folder sumber tidak ditemukan di $SOURCE_FULL_PATH"
-    echo "Pastikan kamu menjalankan ini dari direktori root Codespaces 'happinessad/html'."
-    exit 1
-fi
-echo "✅ Folder sumber ditemukan: $SOURCE_PATH_IN_CURRENT_REPO"
+CURRENT_REPO_DIR=$(pwd) 
 
 cd .. 
 
 rm -rf $TEMP_CLONE_DIR
 
-echo "📥 Mengkloning repositori tujuan ($REPO_TUJUAN_URL)..."
-git clone $REPO_TUJUAN_URL $TEMP_CLONE_DIR
-
+echo "📥 Mengkloning repositori sumber (happinessad/html)..."
+git clone --depth 1 --filter=blob:none --sparse $REPO_SUMBER_URL $TEMP_CLONE_DIR
 if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Gagal mengkloning repositori tujuan."
-    echo "Pastikan URL benar dan repo tersebut publik (atau kamu punya akses)."
+    echo "❌ ERROR: Gagal mengkloning repositori sumber."
     exit 1
 fi
 
 cd $TEMP_CLONE_DIR
+git sparse-checkout set $SOURCE_PATH_IN_REMOTE_REPO
+cd ..
 
-echo "📁 Membuat struktur direktori di tujuan: $DEST_PATH_IN_TARGET_REPO"
-mkdir -p $DEST_PATH_IN_TARGET_REPO
+echo "✅ Repositori sumber berhasil dikloning."
 
-echo "📑 Menyalin file..."
-cp -rT "$SOURCE_FULL_PATH" "$DEST_PATH_IN_TARGET_REPO"
+SOURCE_FULL_PATH="$(pwd)/$TEMP_CLONE_DIR/$SOURCE_PATH_IN_REMOTE_REPO"
+DEST_FULL_PATH="$CURRENT_REPO_DIR/$DEST_PATH_IN_CURRENT_REPO"
 
-echo "✅ File berhasil disalin."
-
-echo "🚀 Mempersiapkan untuk push ke GitHub..."
-
-git config --global user.name "$(git log -1 --pretty=format:'%an')"
-git config --global user.email "$(git log -1 --pretty=format:'%ae')"
-
-if [ -z "$(git status --porcelain)" ]; then
-    echo "👍 Tidak ada perubahan file. Repositori tujuan sudah ter-update."
-    cd ..
+if [ ! -d "$SOURCE_FULL_PATH" ]; then
+    echo "❌ ERROR: Folder sumber '$SOURCE_PATH_IN_REMOTE_REPO' tidak ditemukan di repo sumber."
     rm -rf $TEMP_CLONE_DIR
-    echo "✨ Selesai."
-    exit 0
+    exit 1
 fi
 
-git add .
+echo "📁 Membuat struktur direktori di tujuan: $DEST_PATH_IN_CURRENT_REPO"
+mkdir -p "$DEST_FULL_PATH"
 
-git commit -m "Menambahkan/memperbarui file di $DEST_PATH_IN_TARGET_REPO"
+echo "📑 Menyalin file..."
+cp -rT "$SOURCE_FULL_PATH" "$DEST_FULL_PATH"
+echo "✅ File berhasil disalin."
 
-echo "📤 Mendorong (push) perubahan ke repositori tujuan..."
-git push origin main
+cd "$CURRENT_REPO_DIR"
 
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: Gagal melakukan push ke GitHub."
-    echo "🔴 PENTING: Pastikan kamu memiliki izin TULIS (write access) ke repositori 'Xayztech/minecraft122'."
-    exit 1
+if [ -z "$(git status --porcelain)" ]; then
+    echo "👍 Tidak ada perubahan file. Repositori sudah ter-update."
+else
+    echo "🚀 Mempersiapkan untuk push..."
+    
+    git config --global user.name "$(git log -1 --pretty=format:'%an')"
+    git config --global user.email "$(git log -1 --pretty=format:'%ae')"
+
+    git add .
+    git commit -m "Menambahkan/memperbarui file di $DEST_PATH_IN_CURRENT_REPO"
+    
+    echo "📤 Mendorong (push) perubahan ke repositori tujuan..."
+    git push origin main
+    
+    if [ $? -ne 0 ]; then
+        echo "❌ ERROR: Gagal melakukan push. (Ini seharusnya tidak terjadi jika dijalankan di Codespaces Xayztech)"
+    else
+        echo "✅ Perubahan telah di-push ke GitHub."
+    fi
 fi
 
 echo "🧹 Membersihkan folder sementara..."
@@ -72,4 +71,4 @@ rm -rf $TEMP_CLONE_DIR
 
 echo "---"
 echo "🎉 SUKSES! ---"
-echo "File dari 'happinessad/html/$SOURCE_PATH_IN_CURRENT_REPO' telah disalin ke 'Xayztech/minecraft122/$DEST_PATH_IN_TARGET_REPO'."
+echo "File telah disalin ke repositori 'Xayztech/minecraft122'."
