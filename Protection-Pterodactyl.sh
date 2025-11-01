@@ -123,7 +123,7 @@ main_menu() {
     clear
     display_title
     echo -e "${C_YELLOW}Pilih salah satu opsi:${C_RESET}"
-    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Anti Rusuh ( Protection ) [RECOMMENDED]"
+    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Protection ( Extra Protection ) [RECOMMENDED]"
     echo -e "  ${C-CYAN}2)${C_RESET} Pasang Full Keamanan [RECOMMENDED]"
     echo -e "  ${C-CYAN}3)${C_RESET} Pasang Admin Protection"
     echo -e "  ${C_CYAN}4)${C_RESET} Teleport (Pindah) Ke Versi 2 Protection"
