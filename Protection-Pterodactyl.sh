@@ -132,7 +132,7 @@ main_menu() {
     echo -e "  ${C_CYAN}7)${C_RESET} Buat Backup Otomatis [MUST!]"
     echo -e "  ${C_CYAN}8)${C_RESET} Keluar"
     echo ""
-    read -p "Masukkan pilihan Anda [1-6]: " choice
+    read -p "Masukkan pilihan Anda [1-8]: " choice
     case $choice in
         1) install_features ;;
         2) installfull ;;
