@@ -21,6 +21,16 @@ teleport_to_v2() {
      bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV2.sh)
 }
 
+installadmin() {
+     echo -e "\n${C_BOLD} Please Wait...${C_RESET}"
+     bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV3.sh)
+}
+
+installfull() {
+     echo -e "\n${C_BOLD} Memasang Full Keamanan...${C_RESET}"
+     bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV2S1.sh)
+}
+
 teleport_to_v3() {
      echo -e "\n${C_BOLD} Teleport Ke Versi 2 Protection...${C_RESET}"
      bash <(curl -s https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-PterodactylV3.sh)
@@ -82,20 +92,20 @@ install_features() {
     ZIP_URL="https://xayztech-installasi-fitur-anti-rusuh.vercel.app/Protection-Pterodactyl.zip"
     TMP_FILE="/tmp/Protection-Pterodactyl.zip"
 
-    echo -e "\n${C_BOLD}Langkah 1: Mengunduh file proteksi...${C_RESET}"
+    echo -e "\n${C_BOLD}Langkah 1: Mengunduh proteksi...${C_RESET}"
     if ! curl -Lo "$TMP_FILE" "$ZIP_URL"; then
-        echo -e "${C_RED}✘ Gagal mengunduh file dari URL. Pastikan URL benar dan server memiliki koneksi internet.${C_RESET}"
+        echo -e "${C_RED}✘ Gagal mengunduh dari URL. Pastikan URL benar dan server memiliki koneksi internet.${C_RESET}"
         return 1
     fi
-    echo -e "${C_GREEN}✔ File berhasil diunduh.${C_RESET}"
+    echo -e "${C_GREEN}✔ Berhasil diunduh.${C_RESET}"
 
-    echo -e "\n${C_BOLD}Langkah 2: Menimpa file panel dengan versi terproteksi...${C_RESET}"
+    echo -e "\n${C_BOLD}Langkah 2: Memasang terproteksi...${C_RESET}"
     if ! unzip -o "$TMP_FILE" -d /; then
-        echo -e "${C_RED}✘ Gagal mengekstrak atau menimpa file. Pastikan 'unzip' terinstall.${C_RESET}"
+        echo -e "${C_RED}✘ Gagal mengekstrak. Pastikan 'unzip' terinstall.${C_RESET}"
         rm "$TMP_FILE"
         return 1
     fi
-    echo -e "${C_GREEN}✔ File panel berhasil ditimpa.${C_RESET}"
+    echo -e "${C_GREEN}✔ Protection Berhasil Dipasang!.${C_RESET}"
     
     rm "$TMP_FILE"
 
@@ -113,21 +123,25 @@ main_menu() {
     clear
     display_title
     echo -e "${C_YELLOW}Pilih salah satu opsi:${C_RESET}"
-    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Anti Rusuh ( Protection )"
-    echo -e "  ${C_CYAN}2)${C_RESET} Teleport (Pindah) Ke Versi 2 Protection"
-    echo -e "  ${C_CYAN}3)${C_RESET} Teleport (Pindah) Ke Versi 3 Protection"
-    echo -e "  ${C_CYAN}4)${C_RESET} ${C_RED}Lepas Fitur Anti Rusuh (Restore Panel)${C_RESET}"
-    echo -e "  ${C_CYAN}5)${C_RESET} Buat Backup Manual"
-    echo -e "  ${C_CYAN}6)${C_RESET} Keluar"
+    echo -e "  ${C_CYAN}1)${C_RESET} Pasang Fitur Anti Rusuh ( Protection ) [RECOMMENDED]"
+    echo -e "  ${C-CYAN}2)${C_RESET} Pasang Full Keamanan [RECOMMENDED]"
+    echo -e "  ${C-CYAN}3)${C_RESET} Pasang Admin Protection"
+    echo -e "  ${C_CYAN}4)${C_RESET} Teleport (Pindah) Ke Versi 2 Protection"
+    echo -e "  ${C_CYAN}5)${C_RESET} Teleport (Pindah) Ke Versi 3 Protection"
+    echo -e "  ${C_CYAN}6)${C_RESET} ${C_RED}Lepas Fitur Anti Rusuh (Restore Panel)${C_RESET}"
+    echo -e "  ${C_CYAN}7)${C_RESET} Buat Backup Otomatis [MUST!]"
+    echo -e "  ${C_CYAN}8)${C_RESET} Keluar"
     echo ""
     read -p "Masukkan pilihan Anda [1-6]: " choice
     case $choice in
         1) install_features ;;
-        2) teleport_to_v2 ;;
-        3) teleport_to_v3 ;;
-        4) uninstall_features ;;
-        5) backup_files ;;
-        6) echo -e "${C_GREEN}Sampai jumpa!${C_RESET}"; exit 0 ;;
+        2) installfull ;;
+        3) installadmin ;;
+        4) teleport_to_v2 ;;
+        5) teleport_to_v3 ;;
+        6) uninstall_features ;;
+        7) backup_files ;;
+        8) echo -e "${C_GREEN}Sampai jumpa!${C_RESET}"; exit 0 ;;
         *) echo -e "${C_RED}Pilihan tidak valid.${C_RESET}" ;;
     esac
     echo -e "\n${C_YELLOW}Tekan [Enter] untuk kembali ke menu...${C_RESET}"
