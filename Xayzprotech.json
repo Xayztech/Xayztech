@@ -3,5 +3,10 @@
     "username": "xayzprime",
     "password_hash": "dbe49611201644ada94fea24c81b134c1b2c0d34aa4849cefc8438df752184c6",
     "active": true
+  },
+  {
+    "username": "<username>",
+    "password_hash": "dd81ca61fb57a4ff454c1cf89335a1f5e96afa849dfad4e0116b6ec35309fdea",
+    "active": true
   }
 ]
