@@ -1,17 +1,8 @@
-[
-  {
-    "username": "jemvute",
-    "password_hash": "e6a11a8a96409a803736cc4b0369a6d899ce6531f859556d58ce60126742e8f1",
-    "active": true
+{
+  "users": {
+    "8098526754": {
+      "role": 4
+    }
   },
-  {
-    "username": "memek",
-    "password_hash": "tolol",
-    "active": false
-  },
-  {
-    "username": "omaga",
-    "password_hash": "kontol",
-    "active": true
-  }
-]
+  "accounts": {}
+}
