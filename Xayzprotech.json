@@ -23,5 +23,10 @@
     "username": "ungke",
     "password_hash": "e64466906a1fa63ff39f8b0c01c92010fea968359650e2e06d963e30d486ff6f",
     "active": true
+  },
+  {
+    "username": "lixx",
+    "password_hash": "e159fc1dd2c8da62e3802b7296cccd2de19d04cec86d724faeb94f9cf87c007a",
+    "active": true
   }
 ]
