@@ -123,5 +123,10 @@
     "username": "buyerkayla",
     "password_hash": "a5445a17a2bcb82f21cfdb531848515d00a31e6624241df9ff9da4418f00c6a3",
     "active": true
+  },
+  {
+    "username": "babi",
+    "password_hash": "08de18926d5c7fdc41e0b321832afffbf361026e0a79efe2411bcea438c6307e",
+    "active": true
   }
 ]
