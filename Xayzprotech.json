@@ -18,5 +18,10 @@
     "username": "kntlamba",
     "password_hash": "8891e059c69331540aa156eee0bb3c215c9fc113b128ab4b75a3cfc034f87393",
     "active": true
+  },
+  {
+    "username": "ungke",
+    "password_hash": "e64466906a1fa63ff39f8b0c01c92010fea968359650e2e06d963e30d486ff6f",
+    "active": true
   }
 ]
