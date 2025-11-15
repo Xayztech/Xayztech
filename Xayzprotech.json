@@ -118,5 +118,10 @@
     "username": "weka",
     "password_hash": "1a904718e953ea7da136540e2c07aa2591d13d34df47fe48a2c3768d7471cbec",
     "active": true
+  },
+  {
+    "username": "buyerkayla",
+    "password_hash": "a5445a17a2bcb82f21cfdb531848515d00a31e6624241df9ff9da4418f00c6a3",
+    "active": true
   }
 ]
