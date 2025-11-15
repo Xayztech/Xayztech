@@ -33,5 +33,10 @@
     "username": "Bim",
     "password_hash": "e00443c76cfe2be97aa8dd26df5d7eae093af7ab22ff9902b30fce9b380699b3",
     "active": true
+  },
+  {
+    "username": "jamz",
+    "password_hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+    "active": true
   }
 ]
