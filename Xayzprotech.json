@@ -88,5 +88,10 @@
     "username": "pepek",
     "password_hash": "a66d5dc8dcf4b14e56e6385c288e5da69c945210800e924b27fe45e8014c929d",
     "active": true
+  },
+  {
+    "username": "k4ezar",
+    "password_hash": "a3e67d2e9e5c2e2b3d66f87086a515c13e8411277e74206d8e33185e4f406328",
+    "active": true
   }
 ]
