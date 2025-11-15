@@ -8,5 +8,10 @@
     "username": "<username>",
     "password_hash": "dd81ca61fb57a4ff454c1cf89335a1f5e96afa849dfad4e0116b6ec35309fdea",
     "active": true
+  },
+  {
+    "username": "Joo",
+    "password_hash": "a324f6d264c148275372bc3315aeeeb008a688f25c6910e20bb3bd0fe0c184e6",
+    "active": true
   }
 ]
