@@ -28,5 +28,10 @@
     "username": "lixx",
     "password_hash": "e159fc1dd2c8da62e3802b7296cccd2de19d04cec86d724faeb94f9cf87c007a",
     "active": true
+  },
+  {
+    "username": "Bim",
+    "password_hash": "e00443c76cfe2be97aa8dd26df5d7eae093af7ab22ff9902b30fce9b380699b3",
+    "active": true
   }
 ]
