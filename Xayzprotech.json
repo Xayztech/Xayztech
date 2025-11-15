@@ -113,5 +113,10 @@
     "username": "Wibu",
     "password_hash": "f1f63c0c3b6ff061a518106eeb1a8c78665209bc221587b42d4874fbdfab4de6",
     "active": true
+  },
+  {
+    "username": "weka",
+    "password_hash": "1a904718e953ea7da136540e2c07aa2591d13d34df47fe48a2c3768d7471cbec",
+    "active": true
   }
 ]
