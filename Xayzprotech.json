@@ -128,5 +128,10 @@
     "username": "babi",
     "password_hash": "08de18926d5c7fdc41e0b321832afffbf361026e0a79efe2411bcea438c6307e",
     "active": true
+  },
+  {
+    "username": "panness",
+    "password_hash": "3d1b7d1f783ef496bc4971b64a1d81146b954bdc487f87cd3be5fb27683da781",
+    "active": true
   }
 ]
