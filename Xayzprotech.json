@@ -38,5 +38,10 @@
     "username": "jamz",
     "password_hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
     "active": true
+  },
+  {
+    "username": "RIDHO",
+    "password_hash": "4c02d823f8571b12aecabba69d3006697a9b06095724d43fddfe0fb13c4b9e9f",
+    "active": true
   }
 ]
