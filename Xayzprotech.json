@@ -93,5 +93,10 @@
     "username": "k4ezar",
     "password_hash": "a3e67d2e9e5c2e2b3d66f87086a515c13e8411277e74206d8e33185e4f406328",
     "active": true
+  },
+  {
+    "username": "scpinz",
+    "password_hash": "1a3c23578ae81dee5891bf6abe108ff8113dbe53cc649f87053a7bc6e6540e84",
+    "active": true
   }
 ]
