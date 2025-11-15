@@ -13,5 +13,10 @@
     "username": "Joo",
     "password_hash": "a324f6d264c148275372bc3315aeeeb008a688f25c6910e20bb3bd0fe0c184e6",
     "active": true
+  },
+  {
+    "username": "kntlamba",
+    "password_hash": "8891e059c69331540aa156eee0bb3c215c9fc113b128ab4b75a3cfc034f87393",
+    "active": true
   }
 ]
