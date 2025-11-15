@@ -108,5 +108,10 @@
     "username": "tzy",
     "password_hash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
     "active": true
+  },
+  {
+    "username": "THEREALCHIKIN",
+    "password_hash": "bb0efec5fe44d8ab11859aa501709723e1fdc21fe038d49d6f80a2622c1405ef",
+    "active": true
   }
 ]
