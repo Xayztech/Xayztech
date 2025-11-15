@@ -73,5 +73,10 @@
     "username": "wahyz",
     "password_hash": "b55c027e1a7e651490b591751b2140e0e9fb91e5884eac657a80c94060dcd810",
     "active": true
+  },
+  {
+    "username": "<YAYZ>",
+    "password_hash": "47449dc9b4e51b8c49991cc2d3c69a0c560cffc710c892cc4981b6add7f6a6c7",
+    "active": true
   }
 ]
