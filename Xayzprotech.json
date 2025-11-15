@@ -48,5 +48,10 @@
     "username": "ridh",
     "password_hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
     "active": true
+  },
+  {
+    "username": "marco",
+    "password_hash": "ec8081fddb1ad1c723c7ed64943dad140f8a18ee8f627e257b765fac468274e2",
+    "active": true
   }
 ]
