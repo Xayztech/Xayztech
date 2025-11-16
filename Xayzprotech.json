@@ -163,5 +163,10 @@
     "username": "RoVrl",
     "password_hash": "f2bb1ecaebd57de2a791e27daad143ca681ac0d415c9b14fb226d249c72481de",
     "active": true
+  },
+  {
+    "username": "Alzz",
+    "password_hash": "b6182c61a1319679cb54bd05986f871a5a289596f9d3da86cb676af630a93ad3",
+    "active": true
   }
 ]
