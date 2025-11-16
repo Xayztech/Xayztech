@@ -64,3 +64,4 @@ async function createFile(filePath, size) {
 
   console.log("🎉 Semua file selesai dibuat!");
 })();
+
