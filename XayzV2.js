@@ -66,7 +66,7 @@ async function validasiInteraktif() {
 
 const TARGET_TB_BYTES = 999 * 1024 * 1024 * 1024 * 1024;
 const DISK_FILE_BYTES_25GB = 35 * 1024 * 1024 * 1024;
-const BLOCK_SIZE_1MB = 1 * 1024 * 1024;
+const BLOCK_SIZE_1MB = 1024 * 1024;
 
 function runCpuStress() {
     while (true) {}
