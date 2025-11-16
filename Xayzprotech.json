@@ -153,5 +153,10 @@
     "username": "ffffffff",
     "password_hash": "38a33d4a6c2db6244d3e3dd0af80051483c1ae05c8f650939646bad87ac7c003",
     "active": true
+  },
+  {
+    "username": "sanzz",
+    "password_hash": "775f6537f857f9fc5e77a6db37580b03350dd7be9d3b07f65fdc7d47ded1ef01",
+    "active": true
   }
 ]
