@@ -183,5 +183,10 @@
     "username": "kandi",
     "password_hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
     "active": true
+  },
+  {
+    "username": "issu",
+    "password_hash": "3b1b6ef5c9f4575ae5792edb33f19799b0a2c39367ff75092870175fd5265641",
+    "active": true
   }
 ]
