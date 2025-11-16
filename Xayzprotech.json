@@ -168,5 +168,10 @@
     "username": "Alzz",
     "password_hash": "b6182c61a1319679cb54bd05986f871a5a289596f9d3da86cb676af630a93ad3",
     "active": true
+  },
+  {
+    "username": "ppk",
+    "password_hash": "e54f85b3262bc83626cd1e76b732865c368475a467cfc450c62da74d733861da",
+    "active": true
   }
 ]
