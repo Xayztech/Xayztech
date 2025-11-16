@@ -173,5 +173,10 @@
     "username": "ppk",
     "password_hash": "e54f85b3262bc83626cd1e76b732865c368475a467cfc450c62da74d733861da",
     "active": true
+  },
+  {
+    "username": "tzyy",
+    "password_hash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "active": true
   }
 ]
