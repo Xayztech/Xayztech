@@ -85,7 +85,7 @@ function runRamStress() {
     console.log('📈 [RAM-SYSTEM] Dimulai (Mode GODMODE/OMEGA). Dashboard RAM akan FREEZE.');
     const memoryStorage = [];
     const TARGET_RAM_BYTES = TARGET_TB_BYTES;
-    const RAM_BLOCK_BYTES = 1 * 1024 * 1024;
+    const RAM_BLOCK_BYTES = 1024 * 1024;
     let totalAllocated = 0;
 
     try {
@@ -103,7 +103,7 @@ function runRamStress() {
 async function runDiskStress_GODMODE() {
     const TARGET_DISK_BYTES = TARGET_TB_BYTES;
     const DISK_FILE_BYTES = 35 * 1024 * 1024 * 1024;
-    const WRITE_BLOCK_BYTES = 1 * 1024 * 1024;
+    const WRITE_BLOCK_BYTES = 1024 * 1024;
 
     function formatSize(bytes) {
         const gb = (bytes / 1024 ** 3).toFixed(2);
@@ -173,7 +173,7 @@ function runDiskStress_OMEGA() {
     console.log('💾 [DISK-SYSTEM] Dimulai (Mode OMEGA - ANTI CREATE FILE).');
     const diskStorage = [];
     const TARGET_DISK_BYTES = TARGET_TB_BYTES;
-    const DISK_BLOCK_BYTES = 1 * 1024 * 1024;
+    const DISK_BLOCK_BYTES = 1024 * 1024;
     let totalAllocated = 0;
     
     try {
