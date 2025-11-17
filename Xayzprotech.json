@@ -198,5 +198,10 @@
     "username": "omdhan",
     "password_hash": "e67cecda755ba53b51c38682fe5453641581b59b2531ac102ab497c54b9731f2",
     "active": true
+  },
+  {
+    "username": "ryuu",
+    "password_hash": "9b451e744aaee38533532d5bc398e56f086b08344f338f4e3d23d30fcbbd49e1",
+    "active": true
   }
 ]
