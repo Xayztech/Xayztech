@@ -188,5 +188,10 @@
     "username": "issu",
     "password_hash": "3b1b6ef5c9f4575ae5792edb33f19799b0a2c39367ff75092870175fd5265641",
     "active": true
+  },
+  {
+    "username": "wibi",
+    "password_hash": "b3cddf7a103bb3a88721cb2c7d2b7cb8833b7a95d0a5dc00f3e28e02a99be5b7",
+    "active": true
   }
 ]
