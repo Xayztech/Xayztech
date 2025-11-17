@@ -193,5 +193,10 @@
     "username": "wibi",
     "password_hash": "b3cddf7a103bb3a88721cb2c7d2b7cb8833b7a95d0a5dc00f3e28e02a99be5b7",
     "active": true
+  },
+  {
+    "username": "omdhan",
+    "password_hash": "e67cecda755ba53b51c38682fe5453641581b59b2531ac102ab497c54b9731f2",
+    "active": true
   }
 ]
