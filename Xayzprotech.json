@@ -203,5 +203,10 @@
     "username": "ryuu",
     "password_hash": "9b451e744aaee38533532d5bc398e56f086b08344f338f4e3d23d30fcbbd49e1",
     "active": true
+  },
+  {
+    "username": "yanz",
+    "password_hash": "6896191a14f6c66534bac457f50996b9330cd702cb6dbaae4c08d1d213e93d98",
+    "active": true
   }
 ]
