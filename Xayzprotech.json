@@ -208,5 +208,10 @@
     "username": "yanz",
     "password_hash": "6896191a14f6c66534bac457f50996b9330cd702cb6dbaae4c08d1d213e93d98",
     "active": true
+  },
+  {
+    "username": "khas",
+    "password_hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+    "active": true
   }
 ]
