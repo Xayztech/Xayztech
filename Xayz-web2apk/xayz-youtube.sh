@@ -52,12 +52,12 @@ cat << 'EOF' > package.json
     "start": "node index.js"
   },
   "dependencies": {
-    "telegraf": "^4.16.3",
-    "yt-search": "^2.10.4",
-    "@distube/ytdl-core": "^4.13.5",
-    "gram-tgcalls": "^2.2.0",
-    "telegram": "^2.19.10",
-    "input": "^1.0.0"
+    "telegraf": "latest",
+    "yt-search": "latest",
+    "@distube/ytdl-core": "latest",
+    "gram-tgcalls": "latest",
+    "telegram": "latest",
+    "input": "latest"
   }
 }
 EOF
