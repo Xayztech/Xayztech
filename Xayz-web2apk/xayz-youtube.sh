@@ -1,15 +1,17 @@
 #!/bin/bash
 
+# Warna
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER BOT STREAM YOUTUBE || CREATED AND DEVELOPER BY: @XYCoolcraft ===${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER BOT (FIXED DIRECTORY PATH) ===${NC}"
 echo ""
 
-# --- 1. INPUT TOKEN & THUMBNAIL ---
+# 1. INPUT
 read -p "Masukkan Token Bot: " INPUT_TOKEN
 if [ -z "$INPUT_TOKEN" ]; then
   echo "Token wajib diisi."
@@ -22,33 +24,41 @@ if [ -z "$INPUT_THUMB" ]; then
   INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"
 fi
 
-# --- 2. INSTALL SYSTEM DEPENDENCIES ---
+# 2. SYSTEM UPDATE
 echo ""
-echo -e "${YELLOW}Mengupdate sistem & install alat dasar...${NC}"
+echo -e "${YELLOW}Update System...${NC}"
 sudo apt-get update -y
 sudo apt-get install -y screen curl build-essential git ffmpeg
 
-# --- 3. INSTALL NODE.JS ---
 if ! command -v node &> /dev/null
 then
-    echo "Menginstall Node.js..."
+    echo "Install Node.js..."
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt-get install -y nodejs
 fi
 
-# --- 4. SIAPKAN FOLDER ---
+# 3. BUAT FOLDER (FIXED)
+# Kita hapus folder lama biar bersih
 rm -rf my_yt_bot
+# Buat folder baru
 mkdir -p my_yt_bot
+
+# Simpan lokasi folder saat ini (Absolute Path) untuk dipakai Screen nanti
+CURRENT_DIR=$(pwd)
+BOT_DIR="$CURRENT_DIR/my_yt_bot"
+
+echo -e "${GREEN}Folder Bot dibuat di: $BOT_DIR${NC}"
+# Masuk ke folder
 cd my_yt_bot
 
-# --- 5. BUAT PACKAGE.JSON ---
+# 4. BUAT FILE
 echo ""
-echo -e "${YELLOW}Membuat package.json...${NC}"
+echo -e "${YELLOW}Menulis File...${NC}"
+
 cat << 'EOF' > package.json
 {
-  "name": "YouTube Stream Bot By: @XYCoolcraft",
+  "name": "yt-stream-bot",
   "version": "1.0.0",
-  "description": "Created And Developer By: @XYCoolcraft",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -63,9 +73,6 @@ cat << 'EOF' > package.json
 }
 EOF
 
-# --- 6. BUAT CONFIG.JS ---
-echo ""
-echo -e "${YELLOW}Membuat config.js...${NC}"
 cat << EOF > config.js
 module.exports = {
     botToken: "$INPUT_TOKEN",
@@ -73,9 +80,6 @@ module.exports = {
 };
 EOF
 
-# --- 7. BUAT INDEX.JS ---
-echo ""
-echo -e "${YELLOW}Membuat index.js...${NC}"
 cat << 'EOF' > index.js
 const { Telegraf, Markup } = require('telegraf');
 const yts = require('yt-search');
@@ -125,10 +129,8 @@ async function searchYouTube(query) {
 bot.command('ytvid', async (ctx) => {
     const query = ctx.message.text.split(' ').slice(1).join(' ');
     if (!query) return ctx.reply('Contoh: /ytvid Judul');
-    
     const video = await searchYouTube(query);
     if (!video) return ctx.reply('Video tidak ditemukan.');
-
     await ctx.replyWithPhoto(video.thumbnail, {
         caption: `🎬 <b>${video.title}</b>\n⏱ ${video.timestamp}\n👤 ${video.author.name}`,
         parse_mode: 'HTML',
@@ -142,10 +144,8 @@ bot.command('ytvid', async (ctx) => {
 bot.command('ytmusic', async (ctx) => {
     const query = ctx.message.text.split(' ').slice(1).join(' ');
     if (!query) return ctx.reply('Contoh: /ytmusic Judul');
-    
     const video = await searchYouTube(query);
     if (!video) return ctx.reply('Musik tidak ditemukan.');
-
     await ctx.replyWithPhoto(video.thumbnail, {
         caption: `🎵 <b>${video.title}</b>\n⏱ ${video.timestamp}\n👤 ${video.author.name}`,
         parse_mode: 'HTML',
@@ -167,13 +167,10 @@ bot.action(/stream_(vid|mus)_(.+)/, async (ctx) => {
         const format = type === 'vid' 
             ? ytdl.chooseFormat(info.formats, { quality: '18' }) 
             : ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
-            
         if (!format || !format.url) throw new Error('No stream URL');
-        
         let media = type === 'vid' 
             ? new AudioVideoContent({ video: { url: format.url }, audio: { url: format.url } })
             : new AudioContent({ url: format.url });
-            
         await player.join(chatId, media);
         playerState[chatId] = { isPlaying: true, currentTime: 0, duration: parseInt(info.videoDetails.lengthSeconds), title: info.videoDetails.title, type: type };
         await sendPlayerInterface(ctx, chatId);
@@ -181,7 +178,7 @@ bot.action(/stream_(vid|mus)_(.+)/, async (ctx) => {
     } catch (e) { ctx.reply(`Error: ${e.message}`); }
 });
 
-bot.action(/dl_(vid|mus)_(.+)/, (ctx) => ctx.answerCbQuery('Download nonaktif di demo.'));
+bot.action(/dl_(vid|mus)_(.+)/, (ctx) => ctx.answerCbQuery('Download nonaktif.'));
 
 async function sendPlayerInterface(ctx, chatId, isEdit = false) {
     const state = playerState[chatId];
@@ -190,7 +187,6 @@ async function sendPlayerInterface(ctx, chatId, isEdit = false) {
     const bar = '▬'.repeat(progress) + '🔘' + '▬'.repeat(10 - progress);
     const m = Math.floor(state.currentTime / 60);
     const s = state.currentTime % 60;
-    
     const caption = `<b>${state.type === 'vid'?'📹 Video':'📞 Music'} Player</b>\n${state.isPlaying?'▶️':'⏸'} ${bar} [${m}:${s<10?'0':''}${s}]\n🎵 ${state.title}`;
     const kb = Markup.inlineKeyboard([
         [Markup.button.callback('⏪ -10s', 'seek_back'), Markup.button.callback(state.isPlaying?'⏸':'▶️', 'toggle_play'), Markup.button.callback('⏩ +10s', 'seek_fwd')],
@@ -237,17 +233,20 @@ process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
 EOF
 
-# --- 8. INSTALL MODULES (INI YANG KAMU CARI) ---
+# 5. INSTALL & RUN (FIXED EXECUTION PATH)
 echo ""
-echo -e "${YELLOW}Menginstall Module dari package.json...${NC}"
+echo -e "${YELLOW}Install Module...${NC}"
 npm install
 
-# --- 9. JALANKAN DI SCREEN (INI JUGA) ---
 echo ""
-echo -e "${YELLOW}Menjalankan bot di screen 'ytbot'...${NC}"
+echo -e "${YELLOW}Menjalankan Screen...${NC}"
 screen -X -S ytbot quit 2>/dev/null
-screen -dmS ytbot npm start
+
+# INI BAGIAN TERPENTING:
+# Kita perintahkan screen untuk pindah (cd) ke $BOT_DIR dulu, baru npm start
+screen -dmS ytbot bash -c "cd '$BOT_DIR' && npm start"
 
 echo ""
-echo -e "${GREEN}BERHASIL! Bot berjalan di background.${NC}"
-echo -e "Cek logs: ${YELLOW}screen -r ytbot${NC}"
+echo -e "${GREEN}BERHASIL!${NC}"
+echo -e "Lokasi Bot: ${CYAN}$BOT_DIR${NC}"
+echo -e "Cek Log: ${YELLOW}screen -r ytbot${NC}"
