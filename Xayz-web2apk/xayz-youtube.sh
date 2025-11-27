@@ -54,11 +54,11 @@ cat << 'EOF' > package.json
     "start": "node index.js"
   },
   "dependencies": {
-    "telegraf": "^4.12.2",
-    "yt-search": "^2.10.4",
-    "@distube/ytdl-core": "^4.13.0",
-    "gram-tgcalls": "^2.2.0",
-    "@discordjs/opus": "^0.9.0"
+    "telegraf": "latest",
+    "yt-search": "latest",
+    "@distube/ytdl-core": "latest",
+    "gram-tgcalls": "latest",
+    "@discordjs/opus": "latest"
   }
 }
 EOF
