@@ -301,7 +301,7 @@ npm install
 echo ""
 echo -e "${YELLOW}[Run] Menjalankan Bot di Background...${NC}"
 screen -X -S ytbot quit 2>/dev/null
-screen -dmS ytbot bash -c "cd '$BOT_DIR' && npm start"
+screen -S ytbot bash -c "cd '$BOT_DIR' && npm start"
 
 echo ""
 echo -e "${GREEN}=============================================${NC}"
