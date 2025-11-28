@@ -8,57 +8,50 @@ NC='\033[0m'
 
 clear
 echo -e "${CYAN}======================================================${NC}"
-echo -e "${CYAN}   ULTIMATE TELEGRAM VIDEO BOT (FIXED VERSION)         ${NC}"
+echo -e "${CYAN}   ULTIMATE FIX: FORCE INSTALL LATEST VERSION          ${NC}"
 echo -e "${CYAN}======================================================${NC}"
 
 # --- 1. INPUT DATA ---
 echo ""
-echo -e "${GREEN}[INPUT DATA] Masukkan data bot kamu lagi:${NC}"
+echo -e "${GREEN}[INPUT DATA] Masukkan data bot lagi untuk konfirmasi:${NC}"
 echo ""
 
-read -p "1. Masukkan API_ID (Angka): " IN_API_ID
-read -p "2. Masukkan API_HASH (String): " IN_API_HASH
+read -p "1. Masukkan API_ID: " IN_API_ID
+read -p "2. Masukkan API_HASH: " IN_API_HASH
 read -p "3. Masukkan BOT_TOKEN: " IN_BOT_TOKEN
 
 echo ""
-echo -e "${GREEN}Data diterima. Memulai perbaikan instalasi...${NC}"
+echo -e "${GREEN}Data diterima. Membersihkan instalasi yang rusak...${NC}"
 sleep 2
 
-# --- 2. INSTALL PAKET SISTEM (DITAMBAH BUILD-ESSENTIAL) ---
-echo -e "${CYAN}[1/4] Menginstall 'Alat Tukang' (Compiler & Python Dev)...${NC}"
+# --- 2. BERSIH-BERSIH (UNINSTALL YANG ERROR) ---
+# Kita hapus dulu yang tadi error biar bersih
+pip3 uninstall -y pytgcalls tgcalls pyrogram yt-dlp
+rm -rf bot_video_fixed
+rm -rf bot_ultimate_fix
 
-# Update repo dulu
-sudo apt-get update -y
+# --- 3. INSTALL ULANG DENGAN FLAG '--pre' (KUNCI PERBAIKAN) ---
+echo -e "${CYAN}[1/3] Menginstall Library dengan Mode Pre-Release...${NC}"
 
-# Install paket wajib untuk compile tgcalls (INI YANG KURANG TADI)
-sudo apt-get install -y build-essential python3-dev libffi-dev libssl-dev
+# Update pip
+python3 -m pip install --upgrade pip
 
-# Install paket standar
-sudo apt-get install -y python3 python3-pip ffmpeg screen git
+# Install dependencies dasar
+pip3 install yt-dlp tgcrypto
+pip3 install pyrogram
 
-# Buat Folder
-FOLDER="bot_video_fixed"
-rm -rf $FOLDER 
+# INI BAGIAN PENTINGNYA: 
+# Kita pakai --pre agar dia mau mengambil versi 3.0.0.dev yang tersedia di server
+echo -e "${CYAN}...Menginstall PyTgCalls Versi Terbaru (Beta)...${NC}"
+pip3 install pytgcalls --pre
+
+# Buat Folder Baru
+FOLDER="bot_final_v3"
 mkdir -p $FOLDER
 cd $FOLDER
 
-# --- 3. INSTALL LIBRARY PYTHON (DENGAN CARA AMAN) ---
-echo -e "${CYAN}[2/4] Menginstall Library Python (Ini mungkin agak lama)...${NC}"
-
-# Upgrade pip
-python3 -m pip install --upgrade pip
-
-# Install satu per satu untuk mencegah konflik
-pip3 install yt-dlp
-pip3 install tgcrypto
-pip3 install pyrogram==2.0.106
-
-echo -e "${CYAN}...Sedang mengcompile PyTgCalls (Mohon tunggu, jangan dicancel)...${NC}"
-# Kita install versi spesifik yang stabil
-pip3 install pytgcalls==2.1.0
-
-# --- 4. MEMBUAT BOT.PY ---
-echo -e "${CYAN}[3/4] Menulis ulang kode bot...${NC}"
+# --- 4. TULIS KODE BOT (DISESUAIKAN UNTUK VERSI BARU) ---
+echo -e "${CYAN}[2/3] Menulis kode bot...${NC}"
 
 cat << EOF > bot.py
 import os
@@ -75,7 +68,7 @@ API_HASH = "$IN_API_HASH"
 BOT_TOKEN = "$IN_BOT_TOKEN"
 # =======================
 
-app = Client("fixed_session", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+app = Client("session_v3", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 call_py = PyTgCalls(app)
 
 def download_media(url, is_video=True):
@@ -142,6 +135,7 @@ async def stream_handler(client, message):
 
         await status.edit(f"▶️ <b>Memutar {mode_text}...</b>")
         
+        # Penyesuaian parameter untuk PyTgCalls Versi Baru
         if is_video:
             stream = MediaStream(path, audio_parameters=AudioQuality.HIGH, video_parameters=VideoQuality.SD_480p)
         else:
@@ -176,11 +170,11 @@ if __name__ == "__main__":
 EOF
 
 # --- 5. RUN SCRIPT ---
-echo -e "${CYAN}[4/4] Membuat script kontrol 'run.sh'...${NC}"
+echo -e "${CYAN}[3/3] Membuat script kontrol 'run.sh'...${NC}"
 
 cat << 'EOF' > run.sh
 #!/bin/bash
-SESSION="bot_fixed"
+SESSION="bot_final_v3"
 case $1 in
     start)
         echo "Menyalakan Bot..."
@@ -202,8 +196,8 @@ EOF
 chmod +x run.sh
 
 echo ""
-echo -e "${GREEN}✅ PERBAIKAN SELESAI!${NC}"
-echo "Silakan jalankan:"
-echo "cd bot_video_fixed"
+echo -e "${GREEN}✅ INSTALL SELESAI!${NC}"
+echo "Jalankan:"
+echo "cd bot_final_v3"
 echo "./run.sh start"
 echo ""
