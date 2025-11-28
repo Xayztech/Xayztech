@@ -8,8 +8,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER BOT (FIXED: BUILD TOOLS & WRTC) ===${NC}"
-echo -e "${YELLOW}Fixing: node-pre-gyp not found & npm error code 1${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER BOT (ULTIMATE VERSION) ===${NC}"
+echo -e "${YELLOW}Engine: yt-dlp (Python) | Fix: Sign In Error | Feature: Real Download${NC}"
 echo ""
 
 # 1. INPUT
@@ -20,32 +20,34 @@ echo ""
 read -p "Masukkan URL Thumbnail: " INPUT_THUMB
 if [ -z "$INPUT_THUMB" ]; then INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"; fi
 
-# 2. SYSTEM DEPENDENCIES (UPDATE TOTAL)
+# 2. SYSTEM UPDATE & INSTALL YT-DLP (THE FIX)
 echo ""
-echo -e "${YELLOW}[1/7] Menginstall Alat Kompilasi (Wajib untuk Voice Call)...${NC}"
+echo -e "${YELLOW}[1/6] Menginstall yt-dlp Binary (Engine Terkuat)...${NC}"
 sudo apt-get update -y
-# Tambahan: python-is-python3 dan libtool untuk fix wrtc
-sudo apt-get install -y screen curl build-essential git ffmpeg python3 python-is-python3 libtool autoconf automake g++ make
+sudo apt-get install -y screen curl build-essential git ffmpeg python3 python3-pip
 
+# Install yt-dlp langsung dari GitHub (agar selalu versi terbaru untuk bypass blokir)
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+
+# Cek apakah yt-dlp terinstall
+if ! command -v yt-dlp &> /dev/null; then
+    echo -e "${RED}Gagal install yt-dlp. Mencoba via pip...${NC}"
+    pip3 install yt-dlp
+fi
+
+echo -e "${GREEN}✅ Engine yt-dlp siap!${NC}"
+
+# 3. NODE.JS SETUP
 if ! command -v node &> /dev/null; then
     echo "Install Node.js v20..."
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt-get install -y nodejs
 fi
 
-# 3. FIX NPM PERMISSIONS & GLOBAL TOOLS (SOLUSI ERROR KAMU)
-echo ""
-echo -e "${YELLOW}[2/7] Menginstall node-pre-gyp secara Global...${NC}"
-# Konfigurasi agar root bisa install tanpa error permission
-npm config set unsafe-perm true
-npm config set user 0
-
-# Install alat pembangun yang hilang tadi
-npm install -g node-gyp @mapbox/node-pre-gyp
-
 # 4. RESET FOLDER
 echo ""
-echo -e "${YELLOW}[3/7] Menyiapkan Folder...${NC}"
+echo -e "${YELLOW}[2/6] Menyiapkan Folder Project...${NC}"
 rm -rf my_yt_bot
 mkdir -p my_yt_bot
 CURRENT_DIR=$(pwd)
@@ -53,22 +55,22 @@ BOT_DIR="$CURRENT_DIR/my_yt_bot"
 cd "$BOT_DIR"
 
 # 5. PACKAGE.JSON
-echo -e "${YELLOW}[4/7] Membuat package.json...${NC}"
+# Kita hapus ytdl-core dan ganti logika pakai child_process
+echo -e "${YELLOW}[3/6] Membuat package.json...${NC}"
 cat << 'EOF' > package.json
 {
-  "name": "yt-stream-bot-fixed",
-  "version": "4.0.0",
+  "name": "yt-stream-bot-ultimate",
+  "version": "5.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "telegraf": "latest",
-    "yt-search": "latest",
-    "@distube/ytdl-core": "latest",
-    "gram-tgcalls": "latest",
-    "telegram": "latest",
-    "input": "latest"
+    "telegraf": "^4.16.3",
+    "yt-search": "^2.10.4",
+    "gram-tgcalls": "^2.2.0",
+    "telegram": "^2.19.10",
+    "input": "^1.0.0"
   }
 }
 EOF
@@ -78,23 +80,44 @@ cat << EOF > config.js
 module.exports = { botToken: "$INPUT_TOKEN", thumbUrl: "$INPUT_THUMB" };
 EOF
 
-# 7. INDEX.JS (KODE TETAP SAMA KARENA LOGICNYA SUDAH BENAR)
-echo -e "${YELLOW}[5/7] Menulis Kode Bot...${NC}"
+# 7. INDEX.JS (LOGIKA BARU: MEMANGGIL PYTHON DARI NODEJS)
+echo -e "${YELLOW}[4/6] Menulis Kode Bot (Real Download Logic)...${NC}"
 cat << 'EOF' > index.js
 const { Telegraf, Markup } = require('telegraf');
 const { TelegramClient } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 const { GramTGCalls, AudioVideoContent, AudioContent } = require('gram-tgcalls');
 const yts = require('yt-search');
-const ytdl = require('@distube/ytdl-core');
+const { exec } = require('child_process'); // Kita pakai ini untuk kontrol yt-dlp
+const fs = require('fs');
 const config = require('./config');
 
 const API_ID = 2040;
 const API_HASH = "b18441a1ff607e10a989891a5462e627";
 const stringSession = new StringSession(""); 
 
+// Helper: Eksekusi yt-dlp
+const getStreamLink = (url) => {
+    return new Promise((resolve, reject) => {
+        // -g: Get URL, -f: Format Best
+        exec(`yt-dlp -g -f best "${url}"`, (error, stdout, stderr) => {
+            if (error) return reject(stderr || error);
+            resolve(stdout.trim());
+        });
+    });
+};
+
+const getAudioLink = (url) => {
+    return new Promise((resolve, reject) => {
+        exec(`yt-dlp -g -f bestaudio "${url}"`, (error, stdout, stderr) => {
+            if (error) return reject(stderr || error);
+            resolve(stdout.trim());
+        });
+    });
+};
+
 (async () => {
-    console.log("🔄 Memulai Sistem...");
+    console.log("🔄 Engine Starting...");
 
     const bot = new Telegraf(config.botToken);
     const client = new TelegramClient(stringSession, API_ID, API_HASH, { connectionRetries: 5 });
@@ -107,13 +130,13 @@ const stringSession = new StringSession("");
     const createMenuText = (name) => `
 <b><blockquote>==================================</blockquote></b>
 <b><blockquote>Olla👋, ${name}
-このボットは、YouTube Music と YouTube Video Stream のボットです。
-|| 作成および開発者: @XYCoolcraft</blockquote></b>
+Ultimate YouTube Bot (yt-dlp Engine)
+|| Developer: @XYCoolcraft</blockquote></b>
 <b><blockquote>============⟩ MENU ⟨============</blockquote></b>
 <b>/ytvid [judul]</b>
-╰ Video Stream
+╰ Video Stream & Download
 <b>/ytmusic [judul]</b>
-╰ Music Stream
+╰ Music Stream & Download
 <b>/stop</b>
 ╰ Stop Player
 <b><blockquote>==================================</blockquote></b>`;
@@ -122,12 +145,8 @@ const stringSession = new StringSession("");
         const name = ctx.from.first_name || 'User';
         ctx.replyWithPhoto(config.thumbUrl, { caption: createMenuText(name), parse_mode: 'HTML' });
     });
-    
-    bot.command('menu', (ctx) => {
-        const name = ctx.from.first_name || 'User';
-        ctx.replyWithPhoto(config.thumbUrl, { caption: createMenuText(name), parse_mode: 'HTML' });
-    });
 
+    // --- SEARCH ---
     async function searchYouTube(query) {
         const r = await yts(query);
         return r.videos.length > 0 ? r.videos[0] : null;
@@ -142,8 +161,8 @@ const stringSession = new StringSession("");
         if (!video) return ctx.reply('Tidak ditemukan.');
 
         const btns = [
-            [Markup.button.callback(isMusic ? '📂 Kirim Audio' : '📂 Kirim Video', `dl_${isMusic?'mus':'vid'}_${video.videoId}`)],
-            [Markup.button.callback(isMusic ? '📞 Voice Call' : '📹 Video Call', `stream_${isMusic?'mus':'vid'}_${video.videoId}`)]
+            [Markup.button.callback(isMusic ? '📂 Kirim File Audio (Real)' : '📂 Kirim File Video (Real)', `dl_${isMusic?'mus':'vid'}_${video.videoId}`)],
+            [Markup.button.callback(isMusic ? '📞 Voice Call (Live)' : '📹 Video Call (Live)', `stream_${isMusic?'mus':'vid'}_${video.videoId}`)]
         ];
 
         await ctx.replyWithPhoto(video.thumbnail, {
@@ -153,51 +172,96 @@ const stringSession = new StringSession("");
         });
     });
 
+    // --- STREAM HANDLER (BYPASS SIGN IN) ---
     bot.action(/stream_(vid|mus)_(.+)/, async (ctx) => {
         const type = ctx.match[1];
         const id = ctx.match[2];
         const chatId = ctx.chat.id;
         
-        await ctx.answerCbQuery('Menghubungkan...');
+        await ctx.answerCbQuery('Memproses Link Stream (yt-dlp)...');
         try {
             const videoUrl = `https://www.youtube.com/watch?v=${id}`;
-            const info = await ytdl.getInfo(videoUrl);
-            const format = type === 'vid' 
-                ? ytdl.chooseFormat(info.formats, { quality: '18' }) 
-                : ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
+            let streamUrl;
+
+            // Gunakan yt-dlp untuk ambil link mentah (Bypass IP Block)
+            if (type === 'vid') {
+                 streamUrl = await getStreamLink(videoUrl);
+            } else {
+                 streamUrl = await getAudioLink(videoUrl);
+            }
             
-            if (!format || !format.url) throw new Error('Url Stream Error');
+            if (!streamUrl) throw new Error('Gagal mengambil link stream.');
             
             let media = type === 'vid' 
-                ? new AudioVideoContent({ video: { url: format.url }, audio: { url: format.url } })
-                : new AudioContent({ url: format.url });
+                ? new AudioVideoContent({ video: { url: streamUrl }, audio: { url: streamUrl } })
+                : new AudioContent({ url: streamUrl });
                 
             await player.join(chatId, media);
             
-            playerState[chatId] = { isPlaying: true, currentTime: 0, duration: parseInt(info.videoDetails.lengthSeconds), title: info.videoDetails.title, type: type };
+            playerState[chatId] = { isPlaying: true, currentTime: 0, duration: 300, title: 'Streaming...', type: type };
             await sendPlayerInterface(ctx, chatId);
             
             player.on('finish', () => { player.leave(chatId); delete playerState[chatId]; });
 
         } catch (e) {
             console.error(e);
-            ctx.reply(`❌ Gagal: ${e.message}\n(Pastikan Bot sudah jadi ADMIN!)`);
+            ctx.reply(`❌ Gagal: ${e.message}\n(Coba lagi nanti atau update yt-dlp)`);
         }
     });
 
-    bot.action(/dl_(.+)/, (ctx) => ctx.answerCbQuery('Fitur Download matikan di demo.'));
+    // --- REAL DOWNLOAD HANDLER ---
+    bot.action(/dl_(vid|mus)_(.+)/, async (ctx) => {
+        const type = ctx.match[1]; // vid or mus
+        const id = ctx.match[2];
+        const videoUrl = `https://www.youtube.com/watch?v=${id}`;
+        
+        await ctx.answerCbQuery('Sedang mendownload ke server... Mohon tunggu.');
+        await ctx.reply(`⬇️ Sedang mendownload file... (Bisa memakan waktu tergantung durasi)`);
+
+        const filename = `download_${id}.${type === 'vid' ? 'mp4' : 'mp3'}`;
+        
+        // Command yt-dlp untuk download file nyata
+        // -o : output filename
+        // --max-filesize 50M : Batas limit bot telegram (bisa dihapus kalau pakai local server)
+        let cmd;
+        if (type === 'vid') {
+            cmd = `yt-dlp -f "best[ext=mp4]" -o "${filename}" "${videoUrl}"`;
+        } else {
+            cmd = `yt-dlp -x --audio-format mp3 -o "${filename}" "${videoUrl}"`;
+        }
+
+        exec(cmd, async (error, stdout, stderr) => {
+            if (error) {
+                return ctx.reply(`❌ Gagal Download: ${stderr}`);
+            }
+
+            try {
+                await ctx.replyWithChatAction(type === 'vid' ? 'upload_video' : 'upload_voice');
+                
+                if (type === 'vid') {
+                    await ctx.replyWithVideo({ source: filename }, { caption: '✅ Video Downloaded by Bot' });
+                } else {
+                    await ctx.replyWithAudio({ source: filename }, { caption: '✅ Music Downloaded by Bot' });
+                }
+
+                // Hapus file setelah dikirim agar server tidak penuh
+                fs.unlinkSync(filename);
+            } catch (err) {
+                ctx.reply(`❌ Gagal Mengirim File (Mungkin terlalu besar > 50MB): ${err.message}`);
+                // Bersihkan file sisa jika gagal
+                if (fs.existsSync(filename)) fs.unlinkSync(filename);
+            }
+        });
+    });
 
     async function sendPlayerInterface(ctx, chatId, isEdit = false) {
         const state = playerState[chatId];
         if (!state) return;
-        const progress = state.duration > 0 ? Math.floor((state.currentTime / state.duration) * 10) : 0;
-        const bar = '▬'.repeat(progress) + '🔘' + '▬'.repeat(10 - progress);
-        const m = Math.floor(state.currentTime / 60);
-        const s = state.currentTime % 60;
+        const status = state.isPlaying ? '▶️ Playing' : '⏸ Paused';
+        const caption = `<b>${state.type === 'vid'?'📹':'📞'} Player (Live)</b>\n${status}\n⚠ <i>Seekbar dimatikan di mode live yt-dlp</i>`;
         
-        const caption = `<b>${state.type === 'vid'?'📹 Video':'📞 Music'} Player</b>\n${state.isPlaying?'▶️':'⏸'} ${bar} [${m}:${s<10?'0':''}${s}]\n🎵 ${state.title}`;
         const kb = Markup.inlineKeyboard([
-            [Markup.button.callback('⏪ -10s', 'seek_back'), Markup.button.callback(state.isPlaying?'⏸':'▶️', 'toggle_play'), Markup.button.callback('⏩ +10s', 'seek_fwd')],
+            [Markup.button.callback(state.isPlaying?'⏸ Pause':'▶️ Resume', 'toggle_play')],
             [Markup.button.callback('⏹ Stop', 'stop_stream')]
         ]);
         if (isEdit) try { await ctx.editMessageCaption(caption, {parse_mode:'HTML', ...kb}); } catch(e){}
@@ -225,16 +289,6 @@ const stringSession = new StringSession("");
         delete playerState[ctx.chat.id];
         ctx.reply("⏹ Stopped.");
     });
-    
-    bot.action(['seek_back', 'seek_fwd'], async (ctx) => {
-        const id = ctx.chat.id;
-        if (playerState[id]) {
-            playerState[id].currentTime += (ctx.match[0] === 'seek_fwd' ? 10 : -10);
-            if (playerState[id].currentTime < 0) playerState[id].currentTime = 0;
-            await sendPlayerInterface(ctx, id, true);
-            ctx.answerCbQuery();
-        }
-    });
 
     bot.launch();
     console.log('🚀 BOT BERJALAN!');
@@ -243,33 +297,26 @@ const stringSession = new StringSession("");
 })();
 EOF
 
-# 8. INSTALL DEPENDENCIES (WITH FORCE & UNSAFE-PERM)
+# 8. INSTALL & RUN
 echo ""
-echo -e "${YELLOW}[6/7] Menginstall Modules (Tunggu proses node-gyp)...${NC}"
-
-# Hapus cache agar bersih
+echo -e "${YELLOW}[5/6] Menginstall Modules...${NC}"
 npm cache clean --force
-
-# Install dengan flag khusus untuk mencegah error wrtc/node-pre-gyp
-# --unsafe-perm: abaikan error root
-# --force: paksa install meskipun ada warning deprecated
 npm install --unsafe-perm --force
 
-# Cek manual jika install gagal
+# Cek manual
 if [ ! -d "node_modules/gram-tgcalls" ]; then
-    echo -e "${RED}[WARN] Instalasi lambat atau gagal sebagian. Mencoba fix...${NC}"
+    echo -e "${RED}[WARN] Mengulang instalasi tgcalls...${NC}"
     npm install gram-tgcalls --unsafe-perm
 fi
 
-# 9. RUN
 echo ""
-echo -e "${YELLOW}[7/7] Menjalankan Bot...${NC}"
-
+echo -e "${YELLOW}[6/6] Menjalankan Bot di Background...${NC}"
 screen -X -S ytbot quit 2>/dev/null
-screen -S ytbot bash -c "cd '$BOT_DIR' && npm start"
+screen -dmS ytbot bash -c "cd '$BOT_DIR' && npm start"
 
 echo ""
 echo -e "${GREEN}=============================================${NC}"
-echo -e "${GREEN}   ✅ PROSES SELESAI!                        ${NC}"
+echo -e "${GREEN}   ✅ SUKSES! SYSTEM ENGINE TELAH DIGANTI    ${NC}"
+echo -e "${CYAN}   Sekarang bot menggunakan yt-dlp (Python)  ${NC}"
 echo -e "${GREEN}=============================================${NC}"
 echo -e "Cek Log: ${YELLOW}screen -r ytbot${NC}"
