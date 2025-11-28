@@ -7,19 +7,15 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER BOT (PUBLIC ACCESS - DOWNLOAD FIRST) ===${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER BOT (FIXED VERSION & LOGIC) ===${NC}"
 echo ""
 
 read -p "Masukkan Token Bot: " INPUT_TOKEN
-if [ -z "$INPUT_TOKEN" ]; then
-  exit 1
-fi
+if [ -z "$INPUT_TOKEN" ]; then exit 1; fi
 
 echo ""
 read -p "Masukkan URL Thumbnail: " INPUT_THUMB
-if [ -z "$INPUT_THUMB" ]; then
-  INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"
-fi
+if [ -z "$INPUT_THUMB" ]; then INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"; fi
 
 sudo apt-get update -y
 sudo apt-get install -y screen curl build-essential git ffmpeg python3
@@ -37,19 +33,19 @@ cd "$BOT_DIR"
 
 cat << 'EOF' > package.json
 {
-  "name": "yt-bot-public-stream",
-  "version": "1.0.0",
+  "name": "yt-stream-stable",
+  "version": "12.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "node-telegram-bot-api": "latest",
-    "axios": "latest",
-    "yt-search": "latest",
-    "gram-tgcalls": "latest",
-    "telegram": "latest",
-    "input": "latest"
+    "node-telegram-bot-api": "^0.61.0",
+    "axios": "^1.6.0",
+    "yt-search": "^2.10.4",
+    "gram-tgcalls": "^2.4.0",
+    "telegram": "^2.19.10",
+    "input": "^1.0.0"
   }
 }
 EOF
@@ -123,7 +119,7 @@ const topVideos = async (q) => {
 
 function fail(chatId, replyId, tag, err) {
   const msg = err?.message || (typeof err === "string" ? err : "")
-  return bot.sendMessage(chatId, `⦸ ${tag}\n• pesan: ${msg}\n© ᴏᴛᴀx (⸙)`, { reply_to_message_id: replyId })
+  return bot.sendMessage(chatId, `🚫 ${tag}\n• pesan: ${msg}`, { reply_to_message_id: replyId })
 }
 
 const downloadToTemp = async (url, ext = ".bin") => {
@@ -152,7 +148,7 @@ function normalizeYouTubeUrl(raw) {
 
 const menuText = `
 <b><blockquote>==================================</blockquote></b>
-<b><blockquote>このボットは、Telegram用のYouTube MusicとYouTube Videoのストリーミングボットです。作成・開発者：@XYCoolcraft</blockquote></b>
+<b><blockquote>Telegram用のYouTube MusicとYouTube Videoストリーミングボット！作成・開発者：@XYCoolcraft</blockquote></b>
 <b><blockquote>============⟩ MENU ⟨============</blockquote></b>
 <b>/ytvid [judul]</b>
 ╰ Video Downloader & Stream (MP4)
@@ -227,7 +223,7 @@ bot.on('callback_query', async (query) => {
     const msgId = query.message.message_id;
 
     if (data === 'stop_stream') {
-        await player.leave(chatId);
+        if (player) await player.leave(chatId);
         if (playing.has(chatId)) {
             cleanup(playing.get(chatId).file);
             playing.delete(chatId);
@@ -290,8 +286,12 @@ bot.on('callback_query', async (query) => {
         else {
             await bot.editMessageCaption('📞 Joining Voice Chat...', { chat_id: chatId, message_id: msgId });
             
+            if (!player) {
+                return bot.sendMessage(chatId, '❌ Player System belum siap. Tunggu sebentar.');
+            }
+
+            // JOIN TANPA CONSTRUCTOR CLASS (Langsung Object)
             let mediaInput;
-            
             if (isVideo) {
                 mediaInput = {
                     video: { source: filePath },
@@ -307,7 +307,7 @@ bot.on('callback_query', async (query) => {
             
             playing.set(chatId, { file: filePath });
 
-            await bot.editMessageCaption(`▶️ <b>Playing (Local File)</b>\n🎵 ${title}`, { 
+            await bot.editMessageCaption(`▶️ <b>Now Playing</b>\n🎵 ${title}`, { 
                 chat_id: chatId, 
                 message_id: msgId,
                 parse_mode: 'HTML',
@@ -328,7 +328,7 @@ bot.on('callback_query', async (query) => {
 });
 
 bot.onText(/\/stop/, async (msg) => {
-    await player.leave(msg.chat.id);
+    if (player) await player.leave(msg.chat.id);
     if (playing.has(msg.chat.id)) {
         cleanup(playing.get(msg.chat.id).file);
         playing.delete(msg.chat.id);
