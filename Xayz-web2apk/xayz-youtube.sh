@@ -1,3 +1,60 @@
+#!/bin/bash
+
+# Warna
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+clear
+echo -e "${CYAN}======================================================${NC}"
+echo -e "${CYAN}   ULTIMATE TELEGRAM VIDEO BOT INSTALLER (INTERACTIVE) ${NC}"
+echo -e "${CYAN}======================================================${NC}"
+
+# --- 1. INPUT DATA (Supaya tidak perlu edit file manual) ---
+echo ""
+echo -e "${GREEN}[INPUT DATA] Silakan masukkan data bot kamu sekarang:${NC}"
+echo ""
+
+read -p "1. Masukkan API_ID (Angka dari my.telegram.org): " IN_API_ID
+read -p "2. Masukkan API_HASH (String dari my.telegram.org): " IN_API_HASH
+read -p "3. Masukkan BOT_TOKEN (Dari BotFather): " IN_BOT_TOKEN
+
+echo ""
+echo -e "${GREEN}Data diterima! Memulai instalasi otomatis...${NC}"
+sleep 2
+
+# --- 2. INSTALL PAKET SISTEM ---
+echo -e "${CYAN}[1/4] Menginstall paket sistem (FFmpeg, Python, Screen)...${NC}"
+if [ -f /etc/debian_version ]; then
+    sudo apt update -y
+    sudo apt install -y python3 python3-pip ffmpeg screen git
+elif [ -n "$TERMUX_VERSION" ]; then
+    pkg update -y
+    pkg install -y python ffmpeg screen git
+else
+    echo -e "${RED}[!] OS tidak didukung otomatis.${NC}"
+    exit 1
+fi
+
+# Buat Folder
+FOLDER="bot_ultimate_fix"
+rm -rf $FOLDER # Hapus folder lama jika ada biar bersih
+mkdir -p $FOLDER
+cd $FOLDER
+
+# --- 3. INSTALL LIBRARY PYTHON ---
+echo -e "${CYAN}[2/4] Menginstall Library Python...${NC}"
+pip3 install --upgrade pip
+pip3 install pyrogram tgcrypto pytgcalls yt-dlp
+
+# --- 4. MEMBUAT BOT.PY (Dengan Data Kamu) ---
+echo -e "${CYAN}[3/4] Menulis kode bot (Menu Lengkap)...${NC}"
+
+# Kita pakai cat EOF tapi hati-hati dengan variabel bash ($)
+# Kita inject variabel IN_API_ID ke dalam file python
+
+cat << EOF > bot.py
 import os
 import asyncio
 from pyrogram import Client, filters
@@ -6,199 +63,184 @@ from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream, AudioQuality, VideoQuality
 from yt_dlp import YoutubeDL
 
-# ================= K O N F I G U R A S I =================
-# ISI DENGAN DATA KAMU LAGI YA (WAJIB!)
-API_ID = 33422941             # Ganti Angka Ini
-API_HASH = "72b12f6f5d00b852f0b0aadeffa99f10"    # Ganti String Ini
-BOT_TOKEN = "8034551680:AAFwKiWPI4UOzfUsgcnh4hWZ7zWksnJZXGg"   # Token BotFather
-# =========================================================
+# === CONFIG OTOMATIS DARI INSTALLER ===
+API_ID = $IN_API_ID
+API_HASH = "$IN_API_HASH"
+BOT_TOKEN = "$IN_BOT_TOKEN"
+# ======================================
 
-app = Client("video_music_session", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+app = Client("ultimate_session", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 call_py = PyTgCalls(app)
 
-# --- FUNGSI DOWNLOADER (Video & Audio Terpisah) ---
-
-def download_video(url):
-    ydl_opts = {
-        'format': 'best[ext=mp4]', # Format Video MP4
-        'outtmpl': 'downloads/%(id)s_video.%(ext)s',
-        'quiet': True,
-        'noplaylist': True
+# Helper Download
+def download_media(url, is_video=True):
+    opts = {
+        'quiet': True, 
+        'noplaylist': True,
+        'outtmpl': 'downloads/%(id)s.%(ext)s'
     }
-    with YoutubeDL(ydl_opts) as ydl:
+    if is_video:
+        opts['format'] = 'best[ext=mp4]'
+    else:
+        opts['format'] = 'bestaudio'
+
+    with YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
         filename = ydl.prepare_filename(info)
         if not os.path.exists(filename):
             ydl.download([url])
-        return filename, info['title'], info['thumbnail'], info['duration_string']
+        return filename, info['title'], info['thumbnail'], info.get('duration_string', '??:??')
 
-def download_audio(url):
-    ydl_opts = {
-        'format': 'bestaudio', # Format Audio Saja (Ringan)
-        'outtmpl': 'downloads/%(id)s_audio.%(ext)s',
-        'quiet': True,
-        'noplaylist': True
-    }
-    with YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        filename = ydl.prepare_filename(info)
-        if not os.path.exists(filename):
-            ydl.download([url])
-        return filename, info['title'], info['thumbnail'], info['duration_string']
-
-# --- MENU START ---
+# --- MENU START (SESUAI REQUEST) ---
 @app.on_message(filters.command("start"))
 async def start(client, message):
-    user = message.from_user.first_name
-    await message.reply_photo(
-        photo="https://cdn-icons-png.flaticon.com/512/1384/1384060.png",
-        caption=f"""
-<b><blockquote>==================================</blockquote></b>
-<b><blockquote>Olla👋, {user}</blockquote></b>
-<b><blockquote>Bot Video & Musik Player</blockquote></b>
+    uname = message.from_user.first_name
+    # HTML Caption sesuai request
+    caption = f"""
 <b><blockquote>==================================</blockquote></b>
 
-<b>==⟩ MENU ⟨==</b>
+<b><blockquote>Olla👋, {uname} このボットは、YouTube Music と YouTube Video Stream のボットです。|| 作成および開発者: @XYCoolcraft</blockquote></b>
+
+<b><blockquote>==⟩ MENU ⟨==</blockquote></b>
 
 /ytvid [judul] - Video Call (Nonton Bareng)
 /ytmusic [judul] - Voice Call (Dengar Musik)
-/stop - Matikan Player
-/pause - Jeda
-/resume - Lanjut
+/stop - Mematikan Player
+
+<b><blockquote>==================================</blockquote></b>
 """
+    # Mengirim Gambar Thumbnail
+    await message.reply_photo(
+        photo="https://cdn-icons-png.flaticon.com/512/1384/1384060.png",
+        caption=caption
     )
 
-# --- FITUR 1: VIDEO CALL (/ytvid) ---
-@app.on_message(filters.command(["ytvid", "playvid"]) & filters.group)
-async def stream_video(client, message):
+# --- FUNGSI UTAMA (VIDEO & MUSIC) ---
+@app.on_message(filters.command(["ytvid", "ytmusic", "play"]) & filters.group)
+async def stream_handler(client, message):
+    cmd = message.command[0]
     query = " ".join(message.command[1:])
-    if not query:
-        return await message.reply("❌ Judulnya mana?\nContoh: <code>/ytvid Tulus Monokrom</code>")
     
-    msg = await message.reply("🔍 <b>Mencari Video...</b>")
+    if not query:
+        return await message.reply("❌ <b>Harap masukkan judul!</b>\nContoh: <code>/ytvid Tulus Monokrom</code>")
+
+    # Tentukan Mode (Video atau Musik)
+    is_video = True if cmd in ["ytvid", "play"] else False
+    mode_text = "Video" if is_video else "Musik"
+    
+    status = await message.reply(f"🔍 <b>Mencari {mode_text}...</b>")
 
     try:
-        # Cari URL
+        # 1. Cari URL
         proc = await asyncio.create_subprocess_shell(
-            f"yt-dlp --print '%(id)s' --get-title 'ytsearch1:{query}'",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            f"yt-dlp --print '%(id)s' 'ytsearch1:{query}'",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
-        stdout, stderr = await proc.communicate()
-        result = stdout.decode().strip().split('\n')
-        
-        if not result or result[0] == '':
-            return await msg.edit("❌ Video tidak ditemukan.")
+        stdout, _ = await proc.communicate()
+        res = stdout.decode().strip()
 
-        video_id = result[-1]
-        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        if not res:
+            return await status.edit("❌ Tidak ditemukan.")
 
-        await msg.edit("📥 <b>Mendownload Video (MP4)...</b>\n<i>Mohon tunggu sebentar...</i>")
+        url = f"https://www.youtube.com/watch?v={res}"
         
-        # Download mode Video
-        file_path, title, thumb, durasi = download_video(video_url)
+        # 2. Download
+        await status.edit(f"📥 <b>Downloading {mode_text}...</b>")
+        path, title, thumb, durasi = download_media(url, is_video=is_video)
 
-        await msg.edit(f"🎥 <b>Memulai Video Stream...</b>")
+        # 3. Play Stream
+        await status.edit(f"▶️ <b>Memutar {mode_text} di Call...</b>")
         
-        # Play Video + Audio
-        await call_py.play(
-            message.chat.id,
-            MediaStream(
-                file_path,
-                audio_parameters=AudioQuality.HIGH,
-                video_parameters=VideoQuality.SD_480p, # Video Nyala
-            )
-        )
-        
-        # UI Player Video
-        await message.reply_photo(
-            photo=thumb,
-            caption=f"🎥 <b>Sedang Video Call!</b>\n\n💿 <b>Judul:</b> {title}\n⏱ <b>Durasi:</b> {durasi}\n👤 <b>Request:</b> {message.from_user.mention}",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⏸ Pause", callback_data="pause"), InlineKeyboardButton("▶️ Resume", callback_data="resume")],
-                [InlineKeyboardButton("⏹ Stop Stream", callback_data="stop")]
-            ])
-        )
-        await msg.delete()
+        if is_video:
+            stream = MediaStream(path, audio_parameters=AudioQuality.HIGH, video_parameters=VideoQuality.SD_480p)
+        else:
+            stream = MediaStream(path, audio_parameters=AudioQuality.HIGH, video_flags=MediaStream.Flags.IGNORE)
+
+        await call_py.play(message.chat.id, stream)
+
+        # 4. Kirim Player Interface (Tombol Lengkap)
+        # Tombol Pause/Resume/Stop
+        buttons = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("⏮", callback_data="rewind"),
+                InlineKeyboardButton("⏸ Pause", callback_data="pause"),
+                InlineKeyboardButton("▶️ Play", callback_data="resume"),
+                InlineKeyboardButton("⏭", callback_data="fast_forward")
+            ],
+            [
+                InlineKeyboardButton("⏹ STOP", callback_data="stop")
+            ]
+        ])
+
+        caption_play = f"""
+<b>{title}</b>
+👤 <b>Request:</b> {message.from_user.mention}
+⏱ <b>Durasi:</b> {durasi}
+"""
+        await message.reply_photo(photo=thumb, caption=caption_play, reply_markup=buttons)
+        await status.delete()
 
     except Exception as e:
-        await msg.edit(f"❌ Error: {e}")
+        await status.edit(f"❌ Error: {e}")
 
-# --- FITUR 2: MUSIC ONLY (/ytmusic) ---
-@app.on_message(filters.command(["ytmusic", "playmusic"]) & filters.group)
-async def stream_music(client, message):
-    query = " ".join(message.command[1:])
-    if not query:
-        return await message.reply("❌ Judulnya mana?\nContoh: <code>/ytmusic Tulus Monokrom</code>")
-    
-    msg = await message.reply("🔍 <b>Mencari Musik...</b>")
-
-    try:
-        proc = await asyncio.create_subprocess_shell(
-            f"yt-dlp --print '%(id)s' --get-title 'ytsearch1:{query}'",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await proc.communicate()
-        result = stdout.decode().strip().split('\n')
-        
-        if not result or result[0] == '':
-            return await msg.edit("❌ Musik tidak ditemukan.")
-
-        video_id = result[-1]
-        video_url = f"https://www.youtube.com/watch?v={video_id}"
-
-        await msg.edit("📥 <b>Mendownload Audio (MP3)...</b>\n<i>Ini lebih cepat dari video.</i>")
-        
-        # Download mode Audio Only
-        file_path, title, thumb, durasi = download_audio(video_url)
-
-        await msg.edit(f"🎵 <b>Memutar Musik...</b>")
-        
-        # Play Audio Only (Video Parameters dimatikan/default audio)
-        await call_py.play(
-            message.chat.id,
-            MediaStream(
-                file_path,
-                audio_parameters=AudioQuality.HIGH,
-                video_flags=MediaStream.Flags.IGNORE # Matikan Video
-            )
-        )
-        
-        # UI Player Musik
-        await message.reply_photo(
-            photo=thumb,
-            caption=f"🎵 <b>Sedang Memutar Musik!</b>\n\n💿 <b>Judul:</b> {title}\n⏱ <b>Durasi:</b> {durasi}\n👤 <b>Request:</b> {message.from_user.mention}",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⏸ Pause", callback_data="pause"), InlineKeyboardButton("▶️ Resume", callback_data="resume")],
-                [InlineKeyboardButton("⏹ Stop Musik", callback_data="stop")]
-            ])
-        )
-        await msg.delete()
-
-    except Exception as e:
-        await msg.edit(f"❌ Error: {e}")
-
-# --- CALLBACK CONTROL (SAMA UNTUK KEDUANYA) ---
+# --- TOMBOL INTERAKTIF ---
 @app.on_callback_query()
-async def controls(client, cb):
+async def cb_handler(client, cb):
     chat_id = cb.message.chat.id
-    if cb.data == "stop":
+    data = cb.data
+
+    if data == "stop":
         await call_py.leave_call(chat_id)
         await cb.message.delete()
-    elif cb.data == "pause":
+    elif data == "pause":
         await call_py.pause_stream(chat_id)
-        await cb.answer("⏸ Jeda")
-    elif cb.data == "resume":
+        await cb.answer("Paused")
+    elif data == "resume":
         await call_py.resume_stream(chat_id)
-        await cb.answer("▶️ Lanjut")
+        await cb.answer("Resumed")
+    elif data in ["rewind", "fast_forward"]:
+        await cb.answer("Fitur Seek hanya visual (Stream Realtime)", show_alert=True)
 
-# --- AUTO START ---
+# --- START SYSTEM ---
 async def main():
-    print("Bot Music & Video Siap 24 Jam!")
+    print("Bot Berjalan...")
     await call_py.start()
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
+EOF
+
+# --- 5. MEMBUAT FILE RUN.SH ---
+echo -e "${CYAN}[4/4] Membuat script kontrol 'run.sh'...${NC}"
+
+cat << 'EOF' > run.sh
+#!/bin/bash
+SESSION="bot_ultimate"
+case $1 in
+    start)
+        echo "Menyalakan Bot..."
+        screen -S $SESSION python3 bot.py
+        echo "✅ Bot berjalan di background!"
+        ;;
+    stop)
+        screen -X -S $SESSION quit
+        echo "⛔ Bot dimatikan."
+        ;;
+    cek)
+        screen -r $SESSION
+        ;;
+    *)
+        echo "Gunakan: ./run.sh start | stop | cek"
+        ;;
+esac
+EOF
+chmod +x run.sh
+
+echo ""
+echo -e "${GREEN}✅ SUKSES! Bot sudah siap.${NC}"
+echo -e "${CYAN}======================================================${NC}"
+echo "Sekarang jalankan bot dengan perintah:"
+echo "👉 ./run.sh start"
+echo -e "${CYAN}======================================================${NC}"
