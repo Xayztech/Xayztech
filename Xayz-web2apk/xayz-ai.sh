@@ -9,16 +9,17 @@ NC='\033[0m' # No Color
 clear
 echo -e "${CYAN}====================================================${NC}"
 echo -e "${CYAN}     AUTOSCRIPT INSTALLER XAYZ AI BOT v1 Pro+          ${NC}"
-echo -e "${CYAN}         Created and Developer By: @XYCoolcraft              ${NC}"
+echo -e "${CYAN}         Created And Developer By: @XYCoolcraft              ${NC}"
 echo -e "${CYAN}====================================================${NC}"
 echo ""
 
-# 1. Meminta Input HANYA Bot Token
+# 1. Meminta Input Bot Token dan Gemini Key
 echo -e "${YELLOW}[?] Silakan masukkan data:${NC}"
 read -p "Masukkan Telegram Bot Token: " INPUT_BOT_TOKEN
+read -p "Masukkan Gemini API Key: " INPUT_GEMINI_KEY
 
-if [ -z "$INPUT_BOT_TOKEN" ]; then
-    echo -e "${YELLOW}[!] Token Bot wajib diisi! Membatalkan...${NC}"
+if [ -z "$INPUT_BOT_TOKEN" ] || [ -z "$INPUT_GEMINI_KEY" ]; then
+    echo -e "${YELLOW}[!] Bot Token dan Gemini Key wajib diisi! Membatalkan...${NC}"
     exit 1
 fi
 
@@ -33,15 +34,15 @@ else
 fi
 cd "$FOLDER_NAME"
 
-# 3. Membuat File config.js (Token dari input, Key lain OTOMATIS terisi)
+# 3. Membuat File config.js (Token & Gemini dari input, Third Party OTOMATIS)
 echo -e "${GREEN}[+] Membuat file config.js...${NC}"
 cat <<EOF > config.js
 const { HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 
 // Kunci API
 const TELEGRAM_TOKEN = "$INPUT_BOT_TOKEN";
-const GEMINI_KEY = "AIzaSyCqTL0YkNnCVPbaNJyPz64DTSqMp7xnzfk"; // Otomatis dari script
-const BOTCAHX_API_KEY = "XYCoolcraftNihBoss"; // Otomatis dari script
+const GEMINI_KEY = "$INPUT_GEMINI_KEY";
+const BOTCAHX_API_KEY = "XYCoolcraftNihBoss"; // Otomatis terisi
 
 const config = {
   TELEGRAM_TOKEN: TELEGRAM_TOKEN,
@@ -1345,7 +1346,7 @@ echo -e "${GREEN}[+] Menjalankan bot di dalam Screen session 'xayzbot'...${NC}"
 screen -S xayzbot -X quit 2>/dev/null
 
 # Jalankan sesi baru
-screen -S xayzbot node index.js
+screen -dmS xayzbot node index.js
 
 echo -e "${CYAN}====================================================${NC}"
 echo -e "${GREEN}   SUKSES! BOT SEDANG BERJALAN DI LATAR BELAKANG    ${NC}"
