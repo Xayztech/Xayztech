@@ -7,7 +7,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER BOT (FIXED VERSION & LOGIC) ===${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER (FIX MODULE NOT FOUND) ===${NC}"
 echo ""
 
 read -p "Masukkan Token Bot: " INPUT_TOKEN
@@ -17,6 +17,8 @@ echo ""
 read -p "Masukkan URL Thumbnail: " INPUT_THUMB
 if [ -z "$INPUT_THUMB" ]; then INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"; fi
 
+# 1. SETUP SYSTEM
+echo -e "${YELLOW}Update System...${NC}"
 sudo apt-get update -y
 sudo apt-get install -y screen curl build-essential git ffmpeg python3
 
@@ -25,16 +27,17 @@ if ! command -v node &> /dev/null; then
     sudo apt-get install -y nodejs
 fi
 
+# 2. BERSIHKAN FOLDER LAMA
+echo -e "${YELLOW}Reset Project...${NC}"
 rm -rf my_yt_bot
 mkdir -p my_yt_bot
-CURRENT_DIR=$(pwd)
-BOT_DIR="$CURRENT_DIR/my_yt_bot"
-cd "$BOT_DIR"
+cd my_yt_bot
 
+# 3. BUAT PACKAGE.JSON
 cat << 'EOF' > package.json
 {
-  "name": "yt-stream-stable",
-  "version": "12.0.0",
+  "name": "yt-bot-final-fix",
+  "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -50,6 +53,7 @@ cat << 'EOF' > package.json
 }
 EOF
 
+# 4. BUAT CONFIG
 cat << EOF > config.js
 module.exports = {
     token: "$INPUT_TOKEN",
@@ -57,6 +61,7 @@ module.exports = {
 };
 EOF
 
+# 5. BUAT INDEX.JS
 cat << 'EOF' > index.js
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
@@ -126,7 +131,7 @@ const downloadToTemp = async (url, ext = ".bin") => {
   const file = path.join(os.tmpdir(), `otax_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`)
   const res = await axios.get(url, { 
       responseType: "stream", 
-      timeout: 12000000, 
+      timeout: 300000, 
       headers: { "User-Agent": settings.USER_AGENT } 
   })
   await new Promise((resolve, reject) => {
@@ -181,7 +186,7 @@ bot.onText(/\/ytvid(?:\s+(.+))?/, async (msg, match) => {
             reply_markup: {
                 inline_keyboard: [
                     [ { text: "📥 Download Video", callback_data: `dlvid_${ytUrl}` } ],
-                    [ { text: "📹 Stream Video", callback_data: `stvid_${ytUrl}` } ]
+                    [ { text: "📹 Stream Video (DL First)", callback_data: `stvid_${ytUrl}` } ]
                 ]
             }
         };
@@ -209,7 +214,7 @@ bot.onText(/^\/ytmusic(?:@\w+)?(?:\s+(.+))?$/i, async (msg, match) => {
         reply_markup: {
             inline_keyboard: [
                 [ { text: "📥 Download MP3", callback_data: `dlmus_${ytUrl}` } ],
-                [ { text: "📞 Stream Voice", callback_data: `stmus_${ytUrl}` } ]
+                [ { text: "📞 Stream Voice (DL First)", callback_data: `stmus_${ytUrl}` } ]
             ]
         }
     };
@@ -250,10 +255,10 @@ bot.on('callback_query', async (query) => {
             type: isVideo ? "video" : "audio"
         });
 
-        await bot.editMessageCaption('🔄 Please wait...', { chat_id: chatId, message_id: msgId });
+        await bot.editMessageCaption('🔄 Menghubungkan ke API...', { chat_id: chatId, message_id: msgId });
 
         const r = await axios.get(apiUrl + "?" + params.toString(), {
-            timeout: 1200000,
+            timeout: 60000,
             headers: { "User-Agent": settings.USER_AGENT },
             validateStatus: () => true
         });
@@ -290,7 +295,6 @@ bot.on('callback_query', async (query) => {
                 return bot.sendMessage(chatId, '❌ Player System belum siap. Tunggu sebentar.');
             }
 
-            // JOIN TANPA CONSTRUCTOR CLASS (Langsung Object)
             let mediaInput;
             if (isVideo) {
                 mediaInput = {
@@ -307,7 +311,7 @@ bot.on('callback_query', async (query) => {
             
             playing.set(chatId, { file: filePath });
 
-            await bot.editMessageCaption(`▶️ <b>Now Playing</b>\n🎵 ${title}`, { 
+            await bot.editMessageCaption(`▶️ <b>Now Playing (Local File)</b>\n🎵 ${title}`, { 
                 chat_id: chatId, 
                 message_id: msgId,
                 parse_mode: 'HTML',
@@ -339,9 +343,15 @@ bot.onText(/\/stop/, async (msg) => {
 console.log("BOT AKTIF...");
 EOF
 
+# 6. INSTALASI DEPENDENCIES (YANG PALING PENTING)
+echo -e "${YELLOW}Installing Modules (FORCE)...${NC}"
 npm cache clean --force
+# Install utama
 npm install
+# Install spesifik node-telegram-bot-api untuk memastikan
+npm install node-telegram-bot-api@latest
 
+# 7. JALANKAN
 screen -X -S ytbot quit 2>/dev/null
 screen -S ytbot node index.js
 
