@@ -1,359 +1,204 @@
-#!/bin/bash
+import os
+import asyncio
+from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pytgcalls import PyTgCalls
+from pytgcalls.types import MediaStream, AudioQuality, VideoQuality
+from yt_dlp import YoutubeDL
 
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+# ================= K O N F I G U R A S I =================
+# ISI DENGAN DATA KAMU LAGI YA (WAJIB!)
+API_ID = 33422941             # Ganti Angka Ini
+API_HASH = "72b12f6f5d00b852f0b0aadeffa99f10"    # Ganti String Ini
+BOT_TOKEN = "8034551680:AAFwKiWPI4UOzfUsgcnh4hWZ7zWksnJZXGg"   # Token BotFather
+# =========================================================
 
-clear
-echo -e "${CYAN}=== AUTO INSTALLER (FINAL VERSION FIX) ===${NC}"
-echo ""
+app = Client("video_music_session", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+call_py = PyTgCalls(app)
 
-read -p "Masukkan Token Bot: " INPUT_TOKEN
-if [ -z "$INPUT_TOKEN" ]; then exit 1; fi
+# --- FUNGSI DOWNLOADER (Video & Audio Terpisah) ---
 
-echo ""
-read -p "Masukkan URL Thumbnail: " INPUT_THUMB
-if [ -z "$INPUT_THUMB" ]; then INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"; fi
+def download_video(url):
+    ydl_opts = {
+        'format': 'best[ext=mp4]', # Format Video MP4
+        'outtmpl': 'downloads/%(id)s_video.%(ext)s',
+        'quiet': True,
+        'noplaylist': True
+    }
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        filename = ydl.prepare_filename(info)
+        if not os.path.exists(filename):
+            ydl.download([url])
+        return filename, info['title'], info['thumbnail'], info['duration_string']
 
-# 1. BERSIHKAN LINGKUNGAN
-echo -e "${YELLOW}Membersihkan file lama...${NC}"
-rm -rf my_yt_bot
-mkdir -p my_yt_bot
-cd my_yt_bot
+def download_audio(url):
+    ydl_opts = {
+        'format': 'bestaudio', # Format Audio Saja (Ringan)
+        'outtmpl': 'downloads/%(id)s_audio.%(ext)s',
+        'quiet': True,
+        'noplaylist': True
+    }
+    with YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        filename = ydl.prepare_filename(info)
+        if not os.path.exists(filename):
+            ydl.download([url])
+        return filename, info['title'], info['thumbnail'], info['duration_string']
 
-# 2. UPDATE SYSTEM
-sudo apt-get update -y
-sudo apt-get install -y screen curl build-essential git ffmpeg python3
-
-if ! command -v node &> /dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-fi
-
-# 3. PACKAGE.JSON (VERSI LATEST AGAR TIDAK ERROR "NOT FOUND")
-cat << 'EOF' > package.json
-{
-  "name": "yt-bot-final",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "node-telegram-bot-api": "latest",
-    "axios": "latest",
-    "yt-search": "latest",
-    "gram-tgcalls": "latest",
-    "telegram": "latest",
-    "input": "latest"
-  }
-}
-EOF
-
-# 4. CONFIG
-cat << EOF > config.js
-module.exports = {
-    token: "$INPUT_TOKEN",
-    thumb: "$INPUT_THUMB"
-};
-EOF
-
-# 5. INDEX.JS (LOGIC DOWNLOAD -> STREAM LOCAL FILE)
-cat << 'EOF' > index.js
-const TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const yts = require('yt-search');
-const { TelegramClient } = require('telegram');
-const { StringSession } = require('telegram/sessions');
-const { GramTGCalls } = require('gram-tgcalls'); 
-const config = require('./config');
-
-const bot = new TelegramBot(config.token, { polling: true });
-
-const API_ID = 2040;
-const API_HASH = "b18441a1ff607e10a989891a5462e627";
-const stringSession = new StringSession("");
-let player;
-
-(async () => {
-    const client = new TelegramClient(stringSession, API_ID, API_HASH, { connectionRetries: 5 });
-    await client.start({ botAuthToken: config.token });
-    player = new GramTGCalls(client);
-    console.log("Stream System Ready");
-})();
-
-const settings = { 
-    USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-};
-const playing = new Map();
-
-function txt(m) {
-  if (!m) return ""
-  return (m.text || m.caption || "").trim()
-}
-
-function parseSecs(s) {
-  if (typeof s === "number") return s
-  if (!s || typeof s !== "string") return 0
-  return s.split(":").map(n => parseInt(n, 10)).reduce((a, v) => a * 60 + v, 0)
-}
-
-function getRandomImage() { return config.thumb; }
-function shouldIgnoreMessage(msg) { return false; }
-function urlFrom(msg) { return msg?.text || ""; }
-
-const topVideos = async (q) => {
-  const r = await yts.search(q)
-  const list = Array.isArray(r) ? r : (r.videos || [])
-  return list
-    .filter(v => {
-      const sec = typeof v.seconds === "number" ? v.seconds : parseSecs(v.timestamp || v.duration)
-      return !v.live && sec > 0 && sec <= 1200
-    })
-    .slice(0, 5)
-    .map(v => ({
-      url: v.url, title: v.title, author: (v.author && (v.author.name || v.author)) || "YouTube"
-    }))
-}
-
-function fail(chatId, replyId, tag, err) {
-  const msg = err?.message || (typeof err === "string" ? err : "")
-  return bot.sendMessage(chatId, `⦸ ${tag}\n• pesan: ${msg}\n© YouTube Bot`, { reply_to_message_id: replyId })
-}
-
-const downloadToTemp = async (url, ext = ".bin") => {
-  const file = path.join(os.tmpdir(), `media_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`)
-  const res = await axios.get(url, { 
-      responseType: "stream", 
-      timeout: 12000000, 
-      headers: { "User-Agent": settings.USER_AGENT } 
-  })
-  await new Promise((resolve, reject) => {
-    const w = fs.createWriteStream(file)
-    res.data.pipe(w)
-    w.on("finish", resolve)
-    w.on("error", reject)
-  })
-  return file
-}
-
-function cleanup(f) { try { fs.unlinkSync(f) } catch {} }
-
-function normalizeYouTubeUrl(raw) {
-  if (!raw || typeof raw !== "string") return ""
-  const match = raw.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/)
-  return match ? `https://www.youtube.com/watch?v=${match[1]}` : raw
-}
-
-const menuText = `
+# --- MENU START ---
+@app.on_message(filters.command("start"))
+async def start(client, message):
+    user = message.from_user.first_name
+    await message.reply_photo(
+        photo="https://cdn-icons-png.flaticon.com/512/1384/1384060.png",
+        caption=f"""
 <b><blockquote>==================================</blockquote></b>
-<b><blockquote>Telegram用のYouTube MusicとYouTube Videoストリーミングボット！作成・開発者：@XYCoolcraft</blockquote></b>
-<b><blockquote>============⟩ MENU ⟨============</blockquote></b>
-<b>/ytvid [judul]</b>
-╰ Video Downloader & Stream (MP4)
-<b>/ytmusic [judul]</b>
-╰ Music Downloader & Stream (MP3)
-<b>/stop</b>
-╰ Stop Stream
-<b><blockquote>==================================</blockquote></b>`;
+<b><blockquote>Olla👋, {user}</blockquote></b>
+<b><blockquote>Bot Video & Musik Player</blockquote></b>
+<b><blockquote>==================================</blockquote></b>
 
-bot.onText(/\/start|\/menu/, (msg) => {
-    bot.sendPhoto(msg.chat.id, getRandomImage(), { caption: menuText, parse_mode: 'HTML' });
-});
+<b>==⟩ MENU ⟨==</b>
 
-bot.onText(/\/ytvid(?:\s+(.+))?/, async (msg, match) => {
-    const chatId = msg.chat.id;
-    const q = match[1];
-    if (!q) return bot.sendMessage(chatId, "Contoh: /ytvid Judul Video");
+/ytvid [judul] - Video Call (Nonton Bareng)
+/ytmusic [judul] - Voice Call (Dengar Musik)
+/stop - Matikan Player
+/pause - Jeda
+/resume - Lanjut
+"""
+    )
 
-    try {
-        await bot.sendChatAction(chatId, "typing");
-        const videos = await topVideos(q);
-        if (!videos.length) return bot.sendMessage(chatId, "Video tidak ditemukan.");
+# --- FITUR 1: VIDEO CALL (/ytvid) ---
+@app.on_message(filters.command(["ytvid", "playvid"]) & filters.group)
+async def stream_video(client, message):
+    query = " ".join(message.command[1:])
+    if not query:
+        return await message.reply("❌ Judulnya mana?\nContoh: <code>/ytvid Tulus Monokrom</code>")
+    
+    msg = await message.reply("🔍 <b>Mencari Video...</b>")
 
-        const vid = videos[0];
-        const ytUrl = normalizeYouTubeUrl(vid.url);
+    try:
+        # Cari URL
+        proc = await asyncio.create_subprocess_shell(
+            f"yt-dlp --print '%(id)s' --get-title 'ytsearch1:{query}'",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+        result = stdout.decode().strip().split('\n')
         
-        const opts = {
-            caption: `🎬 <b>${vid.title}</b>\n👤 ${vid.author}\n\nPilih Format:`,
-            parse_mode: 'HTML',
-            reply_markup: {
-                inline_keyboard: [
-                    [ { text: "📥 Download Video", callback_data: `dlvid_${ytUrl}` } ],
-                    [ { text: "📹 Stream Video", callback_data: `stvid_${ytUrl}` } ]
-                ]
-            }
-        };
-        bot.sendPhoto(chatId, getRandomImage(), opts);
-    } catch (e) { fail(chatId, msg.message_id, "Search Error", e); }
-});
+        if not result or result[0] == '':
+            return await msg.edit("❌ Video tidak ditemukan.")
 
-bot.onText(/^\/ytmusic(?:@\w+)?(?:\s+(.+))?$/i, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const q = (match?.[1] || "").trim() || urlFrom(msg.reply_to_message) || txt(msg.reply_to_message);
+        video_id = result[-1]
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
 
-  if (!q) return bot.sendMessage(chatId, "🎧 Ketik judul atau reply judul/link");
-
-  try {
-    await bot.sendChatAction(chatId, "typing");
-    const candidates = /^https?:/.test(q) ? [{ url: q, title: q }] : await topVideos(q);
-    if (!candidates.length) return bot.sendMessage(chatId, "Tidak ada hasil");
-
-    const c = candidates[0];
-    const ytUrl = normalizeYouTubeUrl(c.url);
-
-    const opts = {
-        caption: `🎧 <b>${c.title}</b>\n👤 ${c.author || 'YouTube'}\n\nPilih Format:`,
-        parse_mode: 'HTML',
-        reply_markup: {
-            inline_keyboard: [
-                [ { text: "📥 Download MP3", callback_data: `dlmus_${ytUrl}` } ],
-                [ { text: "📞 Stream Voice", callback_data: `stmus_${ytUrl}` } ]
-            ]
-        }
-    };
-    bot.sendPhoto(chatId, getRandomImage(), opts);
-  } catch (e) { fail(chatId, msg.message_id, "Proses gagal", e); }
-});
-
-bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const data = query.data;
-    const msgId = query.message.message_id;
-
-    if (data === 'stop_stream') {
-        if (player) await player.leave(chatId);
-        if (playing.has(chatId)) {
-            cleanup(playing.get(chatId).file);
-            playing.delete(chatId);
-        }
-        return bot.sendMessage(chatId, '⏹ Stopped.');
-    }
-
-    const type = data.substring(0, 6);
-    const url = data.substring(6);
-    if (!url) return;
-
-    try {
-        const isVideo = (type === 'dlvid_' || type === 'stvid_');
-        const isStream = (type === 'stvid_' || type === 'stmus_');
+        await msg.edit("📥 <b>Mendownload Video (MP4)...</b>\n<i>Mohon tunggu sebentar...</i>")
         
-        // V3 untuk Video, V1 untuk Musik
-        const apiUrl = isVideo 
-            ? "https://api.nekolabs.web.id/downloader/youtube/v3"
-            : "https://api.nekolabs.web.id/downloader/youtube/v1";
+        # Download mode Video
+        file_path, title, thumb, durasi = download_video(video_url)
 
-        const params = new URLSearchParams({
-            url: url,
-            format: isVideo ? "mp4" : "mp3",
-            quality: isVideo ? "720" : "128",
-            type: isVideo ? "video" : "audio"
-        });
-
-        await bot.editMessageCaption('🔄 Menghubungkan ke API...', { chat_id: chatId, message_id: msgId });
-
-        const r = await axios.get(apiUrl + "?" + params.toString(), {
-            timeout: 1200000,
-            headers: { "User-Agent": settings.USER_AGENT },
-            validateStatus: () => true
-        });
-
-        const body = r.data;
-        if (!body.success || !body.result || !body.result.downloadUrl) {
-             return bot.sendMessage(chatId, '❌ API Error: Link tidak ditemukan.');
-        }
-
-        const res = body.result;
-        const dlUrl = res.downloadUrl;
-        const title = res.title;
-
-        await bot.editMessageCaption(`⬇️ Mendownload file ke server... (0%)`, { chat_id: chatId, message_id: msgId });
+        await msg.edit(f"🎥 <b>Memulai Video Stream...</b>")
         
-        const filePath = await downloadToTemp(dlUrl, isVideo ? ".mp4" : ".mp3");
+        # Play Video + Audio
+        await call_py.play(
+            message.chat.id,
+            MediaStream(
+                file_path,
+                audio_parameters=AudioQuality.HIGH,
+                video_parameters=VideoQuality.SD_480p, # Video Nyala
+            )
+        )
+        
+        # UI Player Video
+        await message.reply_photo(
+            photo=thumb,
+            caption=f"🎥 <b>Sedang Video Call!</b>\n\n💿 <b>Judul:</b> {title}\n⏱ <b>Durasi:</b> {durasi}\n👤 <b>Request:</b> {message.from_user.mention}",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⏸ Pause", callback_data="pause"), InlineKeyboardButton("▶️ Resume", callback_data="resume")],
+                [InlineKeyboardButton("⏹ Stop Stream", callback_data="stop")]
+            ])
+        )
+        await msg.delete()
 
-        await bot.editMessageCaption(`✅ Download Selesai. Memproses...`, { chat_id: chatId, message_id: msgId });
+    except Exception as e:
+        await msg.edit(f"❌ Error: {e}")
 
-        if (!isStream) {
-            await bot.sendChatAction(chatId, isVideo ? 'upload_video' : 'upload_audio');
-            if (isVideo) {
-                await bot.sendVideo(chatId, filePath, { caption: title });
-            } else {
-                await bot.sendAudio(chatId, filePath, { caption: title, title: title });
-            }
-            cleanup(filePath);
-            bot.deleteMessage(chatId, msgId);
-        } 
-        else {
-            await bot.editMessageCaption('📞 Joining Voice Chat...', { chat_id: chatId, message_id: msgId });
-            
-            if (!player) return bot.sendMessage(chatId, '❌ Player System belum siap.');
+# --- FITUR 2: MUSIC ONLY (/ytmusic) ---
+@app.on_message(filters.command(["ytmusic", "playmusic"]) & filters.group)
+async def stream_music(client, message):
+    query = " ".join(message.command[1:])
+    if not query:
+        return await message.reply("❌ Judulnya mana?\nContoh: <code>/ytmusic Tulus Monokrom</code>")
+    
+    msg = await message.reply("🔍 <b>Mencari Musik...</b>")
 
-            // FIX: GUNAKAN RAW OBJECT (COMPATIBLE ALL VERSIONS)
-            let mediaInput;
-            if (isVideo) {
-                mediaInput = {
-                    video: { source: filePath },
-                    audio: { source: filePath }
-                };
-            } else {
-                mediaInput = {
-                    audio: { source: filePath }
-                };
-            }
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            f"yt-dlp --print '%(id)s' --get-title 'ytsearch1:{query}'",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+        result = stdout.decode().strip().split('\n')
+        
+        if not result or result[0] == '':
+            return await msg.edit("❌ Musik tidak ditemukan.")
 
-            await player.join(chatId, mediaInput);
-            playing.set(chatId, { file: filePath });
+        video_id = result[-1]
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
 
-            await bot.editMessageCaption(`▶️ <b>Now Playing</b>\n🎵 ${title}`, { 
-                chat_id: chatId, 
-                message_id: msgId,
-                parse_mode: 'HTML',
-                reply_markup: { inline_keyboard: [[{ text: "⏹ Stop", callback_data: "stop_stream" }]] }
-            });
+        await msg.edit("📥 <b>Mendownload Audio (MP3)...</b>\n<i>Ini lebih cepat dari video.</i>")
+        
+        # Download mode Audio Only
+        file_path, title, thumb, durasi = download_audio(video_url)
 
-            player.on('finish', () => { 
-                player.leave(chatId);
-                cleanup(filePath);
-                playing.delete(chatId);
-                bot.sendMessage(chatId, '✅ Selesai diputar.');
-            });
-        }
+        await msg.edit(f"🎵 <b>Memutar Musik...</b>")
+        
+        # Play Audio Only (Video Parameters dimatikan/default audio)
+        await call_py.play(
+            message.chat.id,
+            MediaStream(
+                file_path,
+                audio_parameters=AudioQuality.HIGH,
+                video_flags=MediaStream.Flags.IGNORE # Matikan Video
+            )
+        )
+        
+        # UI Player Musik
+        await message.reply_photo(
+            photo=thumb,
+            caption=f"🎵 <b>Sedang Memutar Musik!</b>\n\n💿 <b>Judul:</b> {title}\n⏱ <b>Durasi:</b> {durasi}\n👤 <b>Request:</b> {message.from_user.mention}",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⏸ Pause", callback_data="pause"), InlineKeyboardButton("▶️ Resume", callback_data="resume")],
+                [InlineKeyboardButton("⏹ Stop Musik", callback_data="stop")]
+            ])
+        )
+        await msg.delete()
 
-    } catch (e) {
-        fail(chatId, msgId, "Proses Error", e);
-    }
-});
+    except Exception as e:
+        await msg.edit(f"❌ Error: {e}")
 
-bot.onText(/\/stop/, async (msg) => {
-    if (player) await player.leave(msg.chat.id);
-    if (playing.has(msg.chat.id)) {
-        cleanup(playing.get(msg.chat.id).file);
-        playing.delete(msg.chat.id);
-    }
-    bot.sendMessage(msg.chat.id, "⏹ Stopped.");
-});
+# --- CALLBACK CONTROL (SAMA UNTUK KEDUANYA) ---
+@app.on_callback_query()
+async def controls(client, cb):
+    chat_id = cb.message.chat.id
+    if cb.data == "stop":
+        await call_py.leave_call(chat_id)
+        await cb.message.delete()
+    elif cb.data == "pause":
+        await call_py.pause_stream(chat_id)
+        await cb.answer("⏸ Jeda")
+    elif cb.data == "resume":
+        await call_py.resume_stream(chat_id)
+        await cb.answer("▶️ Lanjut")
 
-console.log("BOT AKTIF...");
-EOF
+# --- AUTO START ---
+async def main():
+    print("Bot Music & Video Siap 24 Jam!")
+    await call_py.start()
+    await asyncio.Event().wait()
 
-# 6. INSTALASI DEPENDENCIES (KUNCI PERBAIKAN)
-echo -e "${YELLOW}[4/5] Installing Modules (Ini butuh waktu, JANGAN DICANCEL)...${NC}"
-# Bersihkan cache npm agar tidak ada file korup
-npm cache clean --force
-
-# Install dengan flag untuk mengatasi konflik versi
-# Menggunakan 'latest' dari package.json
-npm install --legacy-peer-deps
-
-# 7. JALANKAN
-echo -e "${YELLOW}[5/5] Menjalankan Bot...${NC}"
-screen -X -S ytbot quit 2>/dev/null
-screen -S ytbot node index.js
-
-echo ""
-echo -e "${GREEN}BERHASIL! Cek log dengan: screen -r ytbot${NC}"
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
