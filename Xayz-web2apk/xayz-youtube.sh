@@ -7,7 +7,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER (FIX MODULE NOT FOUND) ===${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER (FINAL VERSION FIX) ===${NC}"
 echo ""
 
 read -p "Masukkan Token Bot: " INPUT_TOKEN
@@ -17,8 +17,13 @@ echo ""
 read -p "Masukkan URL Thumbnail: " INPUT_THUMB
 if [ -z "$INPUT_THUMB" ]; then INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"; fi
 
-# 1. SETUP SYSTEM
-echo -e "${YELLOW}Update System...${NC}"
+# 1. BERSIHKAN LINGKUNGAN
+echo -e "${YELLOW}Membersihkan file lama...${NC}"
+rm -rf my_yt_bot
+mkdir -p my_yt_bot
+cd my_yt_bot
+
+# 2. UPDATE SYSTEM
 sudo apt-get update -y
 sudo apt-get install -y screen curl build-essential git ffmpeg python3
 
@@ -27,33 +32,27 @@ if ! command -v node &> /dev/null; then
     sudo apt-get install -y nodejs
 fi
 
-# 2. BERSIHKAN FOLDER LAMA
-echo -e "${YELLOW}Reset Project...${NC}"
-rm -rf my_yt_bot
-mkdir -p my_yt_bot
-cd my_yt_bot
-
-# 3. BUAT PACKAGE.JSON
+# 3. PACKAGE.JSON (VERSI LATEST AGAR TIDAK ERROR "NOT FOUND")
 cat << 'EOF' > package.json
 {
-  "name": "yt-bot-final-fix",
+  "name": "yt-bot-final",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "node-telegram-bot-api": "^0.61.0",
-    "axios": "^1.6.0",
-    "yt-search": "^2.10.4",
-    "gram-tgcalls": "^2.4.0",
-    "telegram": "^2.19.10",
-    "input": "^1.0.0"
+    "node-telegram-bot-api": "latest",
+    "axios": "latest",
+    "yt-search": "latest",
+    "gram-tgcalls": "latest",
+    "telegram": "latest",
+    "input": "latest"
   }
 }
 EOF
 
-# 4. BUAT CONFIG
+# 4. CONFIG
 cat << EOF > config.js
 module.exports = {
     token: "$INPUT_TOKEN",
@@ -61,7 +60,7 @@ module.exports = {
 };
 EOF
 
-# 5. BUAT INDEX.JS
+# 5. INDEX.JS (LOGIC DOWNLOAD -> STREAM LOCAL FILE)
 cat << 'EOF' > index.js
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
@@ -85,7 +84,7 @@ let player;
     const client = new TelegramClient(stringSession, API_ID, API_HASH, { connectionRetries: 5 });
     await client.start({ botAuthToken: config.token });
     player = new GramTGCalls(client);
-    console.log("System Ready");
+    console.log("Stream System Ready");
 })();
 
 const settings = { 
@@ -124,14 +123,14 @@ const topVideos = async (q) => {
 
 function fail(chatId, replyId, tag, err) {
   const msg = err?.message || (typeof err === "string" ? err : "")
-  return bot.sendMessage(chatId, `🚫 ${tag}\n• pesan: ${msg}`, { reply_to_message_id: replyId })
+  return bot.sendMessage(chatId, `⦸ ${tag}\n• pesan: ${msg}\n© YouTube Bot`, { reply_to_message_id: replyId })
 }
 
 const downloadToTemp = async (url, ext = ".bin") => {
-  const file = path.join(os.tmpdir(), `otax_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`)
+  const file = path.join(os.tmpdir(), `media_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`)
   const res = await axios.get(url, { 
       responseType: "stream", 
-      timeout: 300000, 
+      timeout: 12000000, 
       headers: { "User-Agent": settings.USER_AGENT } 
   })
   await new Promise((resolve, reject) => {
@@ -186,7 +185,7 @@ bot.onText(/\/ytvid(?:\s+(.+))?/, async (msg, match) => {
             reply_markup: {
                 inline_keyboard: [
                     [ { text: "📥 Download Video", callback_data: `dlvid_${ytUrl}` } ],
-                    [ { text: "📹 Stream Video (DL First)", callback_data: `stvid_${ytUrl}` } ]
+                    [ { text: "📹 Stream Video", callback_data: `stvid_${ytUrl}` } ]
                 ]
             }
         };
@@ -214,7 +213,7 @@ bot.onText(/^\/ytmusic(?:@\w+)?(?:\s+(.+))?$/i, async (msg, match) => {
         reply_markup: {
             inline_keyboard: [
                 [ { text: "📥 Download MP3", callback_data: `dlmus_${ytUrl}` } ],
-                [ { text: "📞 Stream Voice (DL First)", callback_data: `stmus_${ytUrl}` } ]
+                [ { text: "📞 Stream Voice", callback_data: `stmus_${ytUrl}` } ]
             ]
         }
     };
@@ -244,6 +243,7 @@ bot.on('callback_query', async (query) => {
         const isVideo = (type === 'dlvid_' || type === 'stvid_');
         const isStream = (type === 'stvid_' || type === 'stmus_');
         
+        // V3 untuk Video, V1 untuk Musik
         const apiUrl = isVideo 
             ? "https://api.nekolabs.web.id/downloader/youtube/v3"
             : "https://api.nekolabs.web.id/downloader/youtube/v1";
@@ -258,14 +258,14 @@ bot.on('callback_query', async (query) => {
         await bot.editMessageCaption('🔄 Menghubungkan ke API...', { chat_id: chatId, message_id: msgId });
 
         const r = await axios.get(apiUrl + "?" + params.toString(), {
-            timeout: 60000,
+            timeout: 1200000,
             headers: { "User-Agent": settings.USER_AGENT },
             validateStatus: () => true
         });
 
         const body = r.data;
         if (!body.success || !body.result || !body.result.downloadUrl) {
-             return bot.sendMessage(chatId, '❌ Error: Link tidak ditemukan.');
+             return bot.sendMessage(chatId, '❌ API Error: Link tidak ditemukan.');
         }
 
         const res = body.result;
@@ -291,10 +291,9 @@ bot.on('callback_query', async (query) => {
         else {
             await bot.editMessageCaption('📞 Joining Voice Chat...', { chat_id: chatId, message_id: msgId });
             
-            if (!player) {
-                return bot.sendMessage(chatId, '❌ Player System belum siap. Tunggu sebentar.');
-            }
+            if (!player) return bot.sendMessage(chatId, '❌ Player System belum siap.');
 
+            // FIX: GUNAKAN RAW OBJECT (COMPATIBLE ALL VERSIONS)
             let mediaInput;
             if (isVideo) {
                 mediaInput = {
@@ -308,10 +307,9 @@ bot.on('callback_query', async (query) => {
             }
 
             await player.join(chatId, mediaInput);
-            
             playing.set(chatId, { file: filePath });
 
-            await bot.editMessageCaption(`▶️ <b>Now Playing (Local File)</b>\n🎵 ${title}`, { 
+            await bot.editMessageCaption(`▶️ <b>Now Playing</b>\n🎵 ${title}`, { 
                 chat_id: chatId, 
                 message_id: msgId,
                 parse_mode: 'HTML',
@@ -343,17 +341,19 @@ bot.onText(/\/stop/, async (msg) => {
 console.log("BOT AKTIF...");
 EOF
 
-# 6. INSTALASI DEPENDENCIES (YANG PALING PENTING)
-echo -e "${YELLOW}Installing Modules (FORCE)...${NC}"
+# 6. INSTALASI DEPENDENCIES (KUNCI PERBAIKAN)
+echo -e "${YELLOW}[4/5] Installing Modules (Ini butuh waktu, JANGAN DICANCEL)...${NC}"
+# Bersihkan cache npm agar tidak ada file korup
 npm cache clean --force
-# Install utama
-npm install
-# Install spesifik node-telegram-bot-api untuk memastikan
-npm install node-telegram-bot-api@latest
+
+# Install dengan flag untuk mengatasi konflik versi
+# Menggunakan 'latest' dari package.json
+npm install --legacy-peer-deps
 
 # 7. JALANKAN
+echo -e "${YELLOW}[5/5] Menjalankan Bot...${NC}"
 screen -X -S ytbot quit 2>/dev/null
 screen -S ytbot node index.js
 
 echo ""
-echo -e "${GREEN}BERHASIL! Cek log: screen -r ytbot${NC}"
+echo -e "${GREEN}BERHASIL! Cek log dengan: screen -r ytbot${NC}"
