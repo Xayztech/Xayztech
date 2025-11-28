@@ -1345,7 +1345,7 @@ echo -e "${GREEN}[+] Menjalankan bot di dalam Screen session 'xayzbot'...${NC}"
 screen -S xayzbot -X quit 2>/dev/null
 
 # Jalankan sesi baru
-screen -dmS xayzbot node index.js
+screen -S xayzbot node index.js
 
 echo -e "${CYAN}====================================================${NC}"
 echo -e "${GREEN}   SUKSES! BOT SEDANG BERJALAN DI LATAR BELAKANG    ${NC}"
