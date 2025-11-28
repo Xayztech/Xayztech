@@ -7,7 +7,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER BOT (SEPARATE ENDPOINTS) ===${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER BOT (PUBLIC ACCESS / NO LIMIT) ===${NC}"
 echo ""
 
 read -p "Masukkan Token Bot: " INPUT_TOKEN
@@ -19,6 +19,12 @@ echo ""
 read -p "Masukkan URL Thumbnail: " INPUT_THUMB
 if [ -z "$INPUT_THUMB" ]; then
   INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"
+fi
+
+echo ""
+read -p "Masukkan Username Owner (tanpa @): " INPUT_OWNER
+if [ -z "$INPUT_OWNER" ]; then
+  INPUT_OWNER="XYCoolcraft"
 fi
 
 sudo apt-get update -y
@@ -37,276 +43,313 @@ cd "$BOT_DIR"
 
 cat << 'EOF' > package.json
 {
-  "name": "Xayz YouTube Stream Telegram",
-  "version": "3.0.0",
-  "description": "Created And Developer By: @XYCoolcraft",
+  "name": "yt-bot-public",
+  "version": "9.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "telegraf": "latest",
+    "node-telegram-bot-api": "latest",
+    "axios": "latest",
+    "yt-search": "latest",
     "gram-tgcalls": "latest",
     "telegram": "latest",
-    "input": "latest",
-    "axios": "latest",
-    "yt-search": "latest"
+    "input": "latest"
   }
 }
 EOF
 
 cat << EOF > config.js
 module.exports = {
-    botToken: "$INPUT_TOKEN",
-    thumbUrl: "$INPUT_THUMB"
+    token: "$INPUT_TOKEN",
+    thumb: "$INPUT_THUMB",
+    ownerUrl: "https://t.me/$INPUT_OWNER"
 };
 EOF
 
 cat << 'EOF' > index.js
-const { Telegraf, Markup } = require('telegraf');
+const TelegramBot = require('node-telegram-bot-api');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const yts = require('yt-search');
 const { TelegramClient } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 const { GramTGCalls, AudioVideoContent, AudioContent } = require('gram-tgcalls');
-const axios = require('axios');
-const yts = require('yt-search');
 const config = require('./config');
+
+const bot = new TelegramBot(config.token, { polling: true });
 
 const API_ID = 2040;
 const API_HASH = "b18441a1ff607e10a989891a5462e627";
 const stringSession = new StringSession("");
+let player;
 
 (async () => {
-    const bot = new Telegraf(config.botToken);
     const client = new TelegramClient(stringSession, API_ID, API_HASH, { connectionRetries: 5 });
-    await client.start({ botAuthToken: config.botToken });
+    await client.start({ botAuthToken: config.token });
+    player = new GramTGCalls(client);
+    console.log("System Ready");
+})();
 
-    const player = new GramTGCalls(client);
-    const playerState = {};
+const settings = { 
+    OWNER_URL: config.ownerUrl,
+    USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+};
 
-    const createMenuText = (name) => `
-<b><blockquote>==================================</blockquote></b>\n
+function txt(m) {
+  if (!m) return ""
+  return (m.text || m.caption || "").trim()
+}
 
-<b><blockquote>Olla👋, ${name}
-これは、Telegram でのストリーム用の YouTube ミュージックおよび YouTube ビデオ ボットです || 作成および開発者: @XYCoolcraft</blockquote></b>\n
+function parseSecs(s) {
+  if (typeof s === "number") return s
+  if (!s || typeof s !== "string") return 0
+  return s.split(":").map(n => parseInt(n, 10)).reduce((a, v) => a * 60 + v, 0)
+}
+
+function getRandomImage() { return config.thumb; }
+function shouldIgnoreMessage(msg) { return false; }
+function urlFrom(msg) { return msg?.text || ""; }
+
+const topVideos = async (q) => {
+  const r = await yts.search(q)
+  const list = Array.isArray(r) ? r : (r.videos || [])
+  return list
+    .filter(v => {
+      const sec = typeof v.seconds === "number" ? v.seconds : parseSecs(v.timestamp || v.duration)
+      return !v.live && sec > 0 && sec <= 1200
+    })
+    .slice(0, 5)
+    .map(v => ({
+      url: v.url, title: v.title, author: (v.author && (v.author.name || v.author)) || "YouTube"
+    }))
+}
+
+function fail(chatId, replyId, tag, err) {
+  const msg = err?.message || (typeof err === "string" ? err : "")
+  return bot.sendMessage(chatId, `⦸ ${tag}\n• pesan: ${msg}\n© ᴏᴛᴀx (⸙)`, { reply_to_message_id: replyId })
+}
+
+const downloadToTemp = async (url, ext = ".bin") => {
+  const file = path.join(os.tmpdir(), `xayz_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`)
+  const res = await axios.get(url, { 
+      responseType: "stream", 
+      timeout: 1200000, 
+      headers: { "User-Agent": settings.USER_AGENT } 
+  })
+  await new Promise((resolve, reject) => {
+    const w = fs.createWriteStream(file)
+    res.data.pipe(w)
+    w.on("finish", resolve)
+    w.on("error", reject)
+  })
+  return file
+}
+
+function cleanup(f) { try { fs.unlinkSync(f) } catch {} }
+
+function normalizeYouTubeUrl(raw) {
+  if (!raw || typeof raw !== "string") return ""
+  const match = raw.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/)
+  return match ? `https://www.youtube.com/watch?v=${match[1]}` : raw
+}
+
+const menuText = `
+<b><blockquote>==================================</blockquote></b>
+
+<b><blockquote>Olla👋, {username}
+私はTelegram用のYouTube MusicとYouTube Video Streamingボットです。作成・開発者：@XYCoolcraft</blockquote></b>
 
 <b><blockquote>============⟩ MENU ⟨============</blockquote></b>
 <b>/ytvid [judul]</b>
-╰ Video Stream & Download
+╰ Video Downloader & Stream
 <b>/ytmusic [judul]</b>
-╰ Music Stream & Download
+╰ Music Downloader & Stream
 <b>/stop</b>
-╰ Stop Player\n
+╰ Stop Stream
 
 <b><blockquote>==================================</blockquote></b>`;
 
-    bot.start((ctx) => {
-        ctx.replyWithPhoto(config.thumbUrl, {
-            caption: createMenuText(ctx.from.first_name || 'User'),
-            parse_mode: 'HTML'
-        });
+bot.onText(/\/start|\/menu/, (msg) => {
+    bot.sendPhoto(msg.chat.id, getRandomImage(), {
+        caption: menuText,
+        parse_mode: 'HTML'
     });
+});
 
-    bot.command('menu', (ctx) => {
-        ctx.replyWithPhoto(config.thumbUrl, {
-            caption: createMenuText(ctx.from.first_name || 'User'),
-            parse_mode: 'HTML'
-        });
-    });
+bot.onText(/\/ytvid(?:\s+(.+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const q = match[1];
+    
+    if (!q) return bot.sendMessage(chatId, "Contoh: /ytvid Judul Video");
 
-    bot.command('ytmusic', async (ctx) => {
-        const query = ctx.message.text.split(' ').slice(1).join(' ');
-        if (!query) return ctx.reply('Contoh: /ytmusic Judul Lagu');
+    try {
+        await bot.sendChatAction(chatId, "typing");
+        const videos = await topVideos(q);
+        if (!videos.length) return bot.sendMessage(chatId, "Video tidak ditemukan.");
 
-        await ctx.sendChatAction('typing');
-
-        try {
-            const apiUrl = "https://api.nekolabs.web.id/downloader/youtube/play/v1";
-            const { data } = await axios.get(apiUrl, { params: { q: query } });
-
-            if (!data.status || !data.result) return ctx.reply('Lagu tidak ditemukan.');
-
-            const r = data.result;
-            const title = r.title;
-            const downloadUrl = r.downloadUrl;
-            const thumb = r.thumbnail || config.thumbUrl;
-            const channel = r.channel;
-
-            const btns = [
-                [Markup.button.callback('📂 Kirim Audio', 'send_mus')],
-                [Markup.button.callback('📞 Voice Call', 'stream_mus')]
-            ];
-
-            const msg = await ctx.replyWithPhoto(thumb, {
-                caption: `🎵 <b>${title}</b>\n👤 ${channel}\n\n<i>Pilih metode:</i>`,
-                parse_mode: 'HTML',
-                ...Markup.inlineKeyboard(btns)
-            });
-
-            playerState[ctx.chat.id] = {
-                msgId: msg.message_id,
-                url: downloadUrl,
-                title: title,
-                type: 'mus'
-            };
-
-        } catch (e) {
-            ctx.reply(`Error: ${e.message}`);
-        }
-    });
-
-    bot.command('ytvid', async (ctx) => {
-        const query = ctx.message.text.split(' ').slice(1).join(' ');
-        if (!query) return ctx.reply('Contoh: /ytvid Judul Video');
-
-        await ctx.sendChatAction('typing');
-
-        try {
-            const search = await yts(query);
-            if (!search.videos.length) return ctx.reply('Video tidak ditemukan di YouTube.');
-            const video = search.videos[0];
-
-            const apiUrl = "https://api.nekolabs.web.id/downloader/youtube/v3";
-            const { data } = await axios.get(apiUrl, { 
-                params: { 
-                    url: video.url,
-                    type: 'video',
-                    format: '720'
-                } 
-            });
-
-            if (!data.result || !data.result.downloadUrl) return ctx.reply('Gagal mengambil link video dari API.');
-
-            const r = data.result;
-            const title = r.title || video.title;
-            const downloadUrl = r.downloadUrl;
-            const thumb = r.thumbnail || video.thumbnail;
-            const channel = r.channel || video.author.name;
-
-            const btns = [
-                [Markup.button.callback('📂 Kirim Video', 'send_vid')],
-                [Markup.button.callback('📹 Video Call', 'stream_vid')]
-            ];
-
-            const msg = await ctx.replyWithPhoto(thumb, {
-                caption: `🎬 <b>${title}</b>\n👤 ${channel}\n⏱ ${video.timestamp}\n\n<i>Pilih metode:</i>`,
-                parse_mode: 'HTML',
-                ...Markup.inlineKeyboard(btns)
-            });
-
-            playerState[ctx.chat.id] = {
-                msgId: msg.message_id,
-                url: downloadUrl,
-                title: title,
-                type: 'vid'
-            };
-
-        } catch (e) {
-            ctx.reply(`Error: ${e.message}`);
-        }
-    });
-
-    bot.action(['stream_vid', 'stream_mus'], async (ctx) => {
-        const chatId = ctx.chat.id;
-        const state = playerState[chatId];
-        const isVideo = ctx.match[0] === 'stream_vid';
-
-        if (!state || !state.url) return ctx.answerCbQuery('Sesi habis.');
+        const vid = videos[0];
+        const ytUrl = normalizeYouTubeUrl(vid.url);
         
-        await ctx.answerCbQuery('Menghubungkan Stream...');
-
-        try {
-            const media = isVideo
-                ? new AudioVideoContent({ video: { url: state.url }, audio: { url: state.url } })
-                : new AudioContent({ url: state.url });
-
-            await player.join(chatId, media);
-            
-            state.isPlaying = true;
-            await sendPlayerInterface(ctx, chatId);
-
-            player.on('finish', () => {
-                player.leave(chatId);
-                state.isPlaying = false;
-            });
-
-        } catch (e) {
-            ctx.reply(`Gagal: ${e.message}`);
-        }
-    });
-
-    bot.action(['send_vid', 'send_mus'], async (ctx) => {
-        const chatId = ctx.chat.id;
-        const state = playerState[chatId];
-        const isVideo = ctx.match[0] === 'send_vid';
-
-        if (!state || !state.url) return ctx.answerCbQuery('Sesi habis.');
-
-        await ctx.answerCbQuery('Mengirim...');
-        await ctx.reply('⬇️ Mengambil file dari API...');
-
-        try {
-            if (isVideo) {
-                await ctx.replyWithVideo({ url: state.url }, { caption: state.title });
-            } else {
-                await ctx.replyWithAudio({ url: state.url }, { caption: state.title });
+        const opts = {
+            caption: `🎬 <b>${vid.title}</b>\n👤 ${vid.author}\n\nPilih Format:`,
+            parse_mode: 'HTML',
+            reply_markup: {
+                inline_keyboard: [
+                    [ { text: "📥 Download Video", callback_data: `dlvid_${ytUrl}` } ],
+                    [ { text: "📹 Stream Video", callback_data: `stvid_${ytUrl}` } ]
+                ]
             }
-        } catch (e) {
-            ctx.reply(`Gagal kirim: ${e.message}`);
+        };
+        bot.sendPhoto(chatId, getRandomImage(), opts);
+    } catch (e) {
+        fail(chatId, msg.message_id, "Search Gagal", e);
+    }
+});
+
+bot.onText(/^\/ytmusic(?:@\w+)?(?:\s+(.+))?$/i, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const q = (match?.[1] || "").trim() || urlFrom(msg.reply_to_message) || txt(msg.reply_to_message);
+
+  if (!q) return bot.sendMessage(chatId, "🎧 Ketik judul atau reply judul/link");
+
+  try {
+    await bot.sendChatAction(chatId, "typing");
+    const candidates = /^https?:/.test(q) ? [{ url: q, title: q }] : await topVideos(q);
+    if (!candidates.length) return bot.sendMessage(chatId, "Tidak ada hasil");
+
+    const c = candidates[0];
+    const ytUrl = normalizeYouTubeUrl(c.url);
+
+    const opts = {
+        caption: `🎧 <b>${c.title}</b>\n👤 ${c.author || 'XYCoolcraft'}\n\nPilih Format:`,
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [ { text: "📥 Download MP3", callback_data: `dlmus_${ytUrl}` } ],
+                [ { text: "📞 Stream Voice", callback_data: `stmus_${ytUrl}` } ]
+            ]
         }
-    });
+    };
+    bot.sendPhoto(chatId, getRandomImage(), opts);
 
-    async function sendPlayerInterface(ctx, chatId, isEdit = false) {
-        const state = playerState[chatId];
-        if (!state) return;
+  } catch (e) {
+    fail(chatId, msg.message_id, "Proses gagal", e);
+  }
+});
 
-        const caption = `<b>${state.type === 'vid'?'📹':'📞'} Player</b>\n${state.isPlaying ? '▶️ Playing' : '⏸ Paused'}\n🎵 ${state.title}`;
-        
-        const kb = Markup.inlineKeyboard([
-            [Markup.button.callback(state.isPlaying?'⏸ Pause':'▶️ Resume', 'toggle_play')],
-            [Markup.button.callback('⏹ Stop', 'stop_stream')]
-        ]);
+bot.on('callback_query', async (query) => {
+    const chatId = query.message.chat.id;
+    const data = query.data;
+    const msgId = query.message.message_id;
 
-        if (isEdit) {
-            try { await ctx.editMessageCaption(caption, { parse_mode: 'HTML', ...kb }); } catch(e){}
-        } else {
-            await ctx.reply(caption, { parse_mode: 'HTML', ...kb });
-        }
+    if (data === 'stop_stream') {
+        await player.leave(chatId);
+        return bot.sendMessage(chatId, '⏹ Stopped.');
     }
 
-    bot.action('toggle_play', async (ctx) => {
-        const id = ctx.chat.id;
-        if (playerState[id]) {
-            playerState[id].isPlaying ? await player.pause(id) : await player.resume(id);
-            playerState[id].isPlaying = !playerState[id].isPlaying;
-            await sendPlayerInterface(ctx, id, true);
-            ctx.answerCbQuery();
+    const type = data.substring(0, 6);
+    const url = data.substring(6);
+
+    if (!url) return;
+
+    try {
+        if (type === 'dlvid_' || type === 'dlmus_') {
+            await bot.editMessageCaption('🔄 Please Wait for process...', { chat_id: chatId, message_id: msgId });
+            
+            const isVideo = type === 'dlvid_';
+            const apiUrl = "https://api.nekolabs.web.id/downloader/youtube/v1";
+            
+            const params = new URLSearchParams({
+                url: url,
+                format: isVideo ? "mp4" : "mp3",
+                quality: isVideo ? "720" : "128",
+                type: isVideo ? "video" : "audio"
+            });
+
+            const r = await axios.get(apiUrl + "?" + params.toString(), {
+                timeout: 1200000,
+                headers: { "User-Agent": settings.USER_AGENT },
+                validateStatus: () => true
+            });
+
+            const body = r.data;
+            if (body.success && body.result && body.result.downloadUrl) {
+                const res = body.result;
+                const file = await downloadToTemp(res.downloadUrl, isVideo ? ".mp4" : ".mp3");
+
+                if (isVideo) {
+                    await bot.sendVideo(chatId, file, { caption: res.title });
+                } else {
+                    await bot.sendAudio(chatId, file, { caption: res.title, title: res.title });
+                }
+                cleanup(file);
+                bot.deleteMessage(chatId, msgId);
+            } else {
+                bot.sendMessage(chatId, '❌ Gagal mengambil link download (API Error).');
+            }
         }
-    });
 
-    bot.action('stop_stream', async (ctx) => {
-        await player.leave(ctx.chat.id);
-        delete playerState[ctx.chat.id];
-        await ctx.editMessageCaption("⏹ Stopped.", {parse_mode:'HTML'});
-    });
-    
-    bot.command('stop', async (ctx) => {
-        await player.leave(ctx.chat.id);
-        delete playerState[ctx.chat.id];
-        ctx.reply("⏹ Stopped.");
-    });
+        if (type === 'stvid_' || type === 'stmus_') {
+            await bot.editMessageCaption('🔄 Menghubungkan ke Voice Chat...', { chat_id: chatId, message_id: msgId });
+            
+            const isVideo = type === 'stvid_';
+            const apiUrl = "https://api.nekolabs.web.id/downloader/youtube/v1";
+            
+            const params = new URLSearchParams({
+                url: url,
+                format: isVideo ? "mp4" : "mp3",
+                quality: isVideo ? "720" : "128",
+                type: isVideo ? "video" : "audio"
+            });
 
-    bot.launch();
-    console.log('BOT STARTED');
-    process.once('SIGINT', () => { bot.stop('SIGINT'); client.disconnect(); });
-    process.once('SIGTERM', () => { bot.stop('SIGTERM'); client.disconnect(); });
-})();
+            const r = await axios.get(apiUrl + "?" + params.toString(), {
+                timeout: 1200000,
+                headers: { "User-Agent": settings.USER_AGENT },
+                validateStatus: () => true
+            });
+
+            if (r.data.success && r.data.result.downloadUrl) {
+                const streamLink = r.data.result.downloadUrl;
+                
+                const media = isVideo 
+                    ? new AudioVideoContent({ video: { url: streamLink }, audio: { url: streamLink } })
+                    : new AudioContent({ url: streamLink });
+                
+                await player.join(chatId, media);
+                
+                await bot.editMessageCaption(`▶️ <b>Streaming...</b>\n🎵 ${r.data.result.title}`, { 
+                    chat_id: chatId, 
+                    message_id: msgId,
+                    parse_mode: 'HTML',
+                    reply_markup: { inline_keyboard: [[{ text: "⏹ Stop", callback_data: "stop_stream" }]] }
+                });
+
+                player.on('finish', () => { player.leave(chatId); });
+            }
+        }
+
+    } catch (e) {
+        fail(chatId, msgId, "Callback Error", e);
+    }
+});
+
+bot.onText(/\/stop/, async (msg) => {
+    await player.leave(msg.chat.id);
+    bot.sendMessage(msg.chat.id, "⏹ Player stopped.");
+});
+
+console.log("BOT AKTIF...");
 EOF
 
 npm cache clean --force
 npm install
 
 screen -X -S ytbot quit 2>/dev/null
-screen -S ytbot bash -c "cd '$BOT_DIR' && npm start"
+screen -S ytbot node index.js
 
 echo ""
-echo -e "${GREEN}BERHASIL! Cek: screen -r ytbot${NC}"
+echo -e "${GREEN}BERHASIL! Cek log: screen -r ytbot${NC}"
