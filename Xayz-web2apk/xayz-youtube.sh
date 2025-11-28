@@ -312,7 +312,7 @@ fi
 echo ""
 echo -e "${YELLOW}[6/6] Menjalankan Bot di Background...${NC}"
 screen -X -S ytbot quit 2>/dev/null
-screen -dmS ytbot bash -c "cd '$BOT_DIR' && npm start"
+screen -S ytbot bash -c "cd '$BOT_DIR' && npm start"
 
 echo ""
 echo -e "${GREEN}=============================================${NC}"
