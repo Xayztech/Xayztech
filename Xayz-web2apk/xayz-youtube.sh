@@ -7,7 +7,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER BOT (PUBLIC ACCESS / NO LIMIT) ===${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER BOT (PUBLIC ACCESS - DOWNLOAD FIRST) ===${NC}"
 echo ""
 
 read -p "Masukkan Token Bot: " INPUT_TOKEN
@@ -19,12 +19,6 @@ echo ""
 read -p "Masukkan URL Thumbnail: " INPUT_THUMB
 if [ -z "$INPUT_THUMB" ]; then
   INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"
-fi
-
-echo ""
-read -p "Masukkan Username Owner (tanpa @): " INPUT_OWNER
-if [ -z "$INPUT_OWNER" ]; then
-  INPUT_OWNER="XYCoolcraft"
 fi
 
 sudo apt-get update -y
@@ -43,8 +37,8 @@ cd "$BOT_DIR"
 
 cat << 'EOF' > package.json
 {
-  "name": "yt-bot-public",
-  "version": "9.0.0",
+  "name": "yt-bot-public-stream",
+  "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -63,8 +57,7 @@ EOF
 cat << EOF > config.js
 module.exports = {
     token: "$INPUT_TOKEN",
-    thumb: "$INPUT_THUMB",
-    ownerUrl: "https://t.me/$INPUT_OWNER"
+    thumb: "$INPUT_THUMB"
 };
 EOF
 
@@ -77,7 +70,7 @@ const os = require('os');
 const yts = require('yt-search');
 const { TelegramClient } = require('telegram');
 const { StringSession } = require('telegram/sessions');
-const { GramTGCalls, AudioVideoContent, AudioContent } = require('gram-tgcalls');
+const { GramTGCalls } = require('gram-tgcalls'); 
 const config = require('./config');
 
 const bot = new TelegramBot(config.token, { polling: true });
@@ -95,9 +88,9 @@ let player;
 })();
 
 const settings = { 
-    OWNER_URL: config.ownerUrl,
     USER_AGENT: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 };
+const playing = new Map();
 
 function txt(m) {
   if (!m) return ""
@@ -134,10 +127,10 @@ function fail(chatId, replyId, tag, err) {
 }
 
 const downloadToTemp = async (url, ext = ".bin") => {
-  const file = path.join(os.tmpdir(), `xayz_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`)
+  const file = path.join(os.tmpdir(), `otax_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`)
   const res = await axios.get(url, { 
       responseType: "stream", 
-      timeout: 1200000, 
+      timeout: 12000000, 
       headers: { "User-Agent": settings.USER_AGENT } 
   })
   await new Promise((resolve, reject) => {
@@ -159,31 +152,23 @@ function normalizeYouTubeUrl(raw) {
 
 const menuText = `
 <b><blockquote>==================================</blockquote></b>
-
-<b><blockquote>Olla👋, {username}
-私はTelegram用のYouTube MusicとYouTube Video Streamingボットです。作成・開発者：@XYCoolcraft</blockquote></b>
-
+<b><blockquote>このボットは、Telegram用のYouTube MusicとYouTube Videoのストリーミングボットです。作成・開発者：@XYCoolcraft</blockquote></b>
 <b><blockquote>============⟩ MENU ⟨============</blockquote></b>
 <b>/ytvid [judul]</b>
-╰ Video Downloader & Stream
+╰ Video Downloader & Stream (MP4)
 <b>/ytmusic [judul]</b>
-╰ Music Downloader & Stream
+╰ Music Downloader & Stream (MP3)
 <b>/stop</b>
 ╰ Stop Stream
-
 <b><blockquote>==================================</blockquote></b>`;
 
 bot.onText(/\/start|\/menu/, (msg) => {
-    bot.sendPhoto(msg.chat.id, getRandomImage(), {
-        caption: menuText,
-        parse_mode: 'HTML'
-    });
+    bot.sendPhoto(msg.chat.id, getRandomImage(), { caption: menuText, parse_mode: 'HTML' });
 });
 
 bot.onText(/\/ytvid(?:\s+(.+))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const q = match[1];
-    
     if (!q) return bot.sendMessage(chatId, "Contoh: /ytvid Judul Video");
 
     try {
@@ -205,9 +190,7 @@ bot.onText(/\/ytvid(?:\s+(.+))?/, async (msg, match) => {
             }
         };
         bot.sendPhoto(chatId, getRandomImage(), opts);
-    } catch (e) {
-        fail(chatId, msg.message_id, "Search Gagal", e);
-    }
+    } catch (e) { fail(chatId, msg.message_id, "Search Error", e); }
 });
 
 bot.onText(/^\/ytmusic(?:@\w+)?(?:\s+(.+))?$/i, async (msg, match) => {
@@ -225,7 +208,7 @@ bot.onText(/^\/ytmusic(?:@\w+)?(?:\s+(.+))?$/i, async (msg, match) => {
     const ytUrl = normalizeYouTubeUrl(c.url);
 
     const opts = {
-        caption: `🎧 <b>${c.title}</b>\n👤 ${c.author || 'XYCoolcraft'}\n\nPilih Format:`,
+        caption: `🎧 <b>${c.title}</b>\n👤 ${c.author || 'YouTube'}\n\nPilih Format:`,
         parse_mode: 'HTML',
         reply_markup: {
             inline_keyboard: [
@@ -235,10 +218,7 @@ bot.onText(/^\/ytmusic(?:@\w+)?(?:\s+(.+))?$/i, async (msg, match) => {
         }
     };
     bot.sendPhoto(chatId, getRandomImage(), opts);
-
-  } catch (e) {
-    fail(chatId, msg.message_id, "Proses gagal", e);
-  }
+  } catch (e) { fail(chatId, msg.message_id, "Proses gagal", e); }
 });
 
 bot.on('callback_query', async (query) => {
@@ -248,98 +228,112 @@ bot.on('callback_query', async (query) => {
 
     if (data === 'stop_stream') {
         await player.leave(chatId);
+        if (playing.has(chatId)) {
+            cleanup(playing.get(chatId).file);
+            playing.delete(chatId);
+        }
         return bot.sendMessage(chatId, '⏹ Stopped.');
     }
 
     const type = data.substring(0, 6);
     const url = data.substring(6);
-
     if (!url) return;
 
     try {
-        if (type === 'dlvid_' || type === 'dlmus_') {
-            await bot.editMessageCaption('🔄 Please Wait for process...', { chat_id: chatId, message_id: msgId });
-            
-            const isVideo = type === 'dlvid_';
-            const apiUrl = "https://api.nekolabs.web.id/downloader/youtube/v1";
-            
-            const params = new URLSearchParams({
-                url: url,
-                format: isVideo ? "mp4" : "mp3",
-                quality: isVideo ? "720" : "128",
-                type: isVideo ? "video" : "audio"
-            });
+        const isVideo = (type === 'dlvid_' || type === 'stvid_');
+        const isStream = (type === 'stvid_' || type === 'stmus_');
+        
+        const apiUrl = isVideo 
+            ? "https://api.nekolabs.web.id/downloader/youtube/v3"
+            : "https://api.nekolabs.web.id/downloader/youtube/v1";
 
-            const r = await axios.get(apiUrl + "?" + params.toString(), {
-                timeout: 1200000,
-                headers: { "User-Agent": settings.USER_AGENT },
-                validateStatus: () => true
-            });
+        const params = new URLSearchParams({
+            url: url,
+            format: isVideo ? "mp4" : "mp3",
+            quality: isVideo ? "720" : "128",
+            type: isVideo ? "video" : "audio"
+        });
 
-            const body = r.data;
-            if (body.success && body.result && body.result.downloadUrl) {
-                const res = body.result;
-                const file = await downloadToTemp(res.downloadUrl, isVideo ? ".mp4" : ".mp3");
+        await bot.editMessageCaption('🔄 Please wait...', { chat_id: chatId, message_id: msgId });
 
-                if (isVideo) {
-                    await bot.sendVideo(chatId, file, { caption: res.title });
-                } else {
-                    await bot.sendAudio(chatId, file, { caption: res.title, title: res.title });
-                }
-                cleanup(file);
-                bot.deleteMessage(chatId, msgId);
-            } else {
-                bot.sendMessage(chatId, '❌ Gagal mengambil link download (API Error).');
-            }
+        const r = await axios.get(apiUrl + "?" + params.toString(), {
+            timeout: 1200000,
+            headers: { "User-Agent": settings.USER_AGENT },
+            validateStatus: () => true
+        });
+
+        const body = r.data;
+        if (!body.success || !body.result || !body.result.downloadUrl) {
+             return bot.sendMessage(chatId, '❌ Error: Link tidak ditemukan.');
         }
 
-        if (type === 'stvid_' || type === 'stmus_') {
-            await bot.editMessageCaption('🔄 Menghubungkan ke Voice Chat...', { chat_id: chatId, message_id: msgId });
-            
-            const isVideo = type === 'stvid_';
-            const apiUrl = "https://api.nekolabs.web.id/downloader/youtube/v1";
-            
-            const params = new URLSearchParams({
-                url: url,
-                format: isVideo ? "mp4" : "mp3",
-                quality: isVideo ? "720" : "128",
-                type: isVideo ? "video" : "audio"
-            });
+        const res = body.result;
+        const dlUrl = res.downloadUrl;
+        const title = res.title;
 
-            const r = await axios.get(apiUrl + "?" + params.toString(), {
-                timeout: 1200000,
-                headers: { "User-Agent": settings.USER_AGENT },
-                validateStatus: () => true
-            });
+        await bot.editMessageCaption(`⬇️ Mendownload file ke server... (0%)`, { chat_id: chatId, message_id: msgId });
+        
+        const filePath = await downloadToTemp(dlUrl, isVideo ? ".mp4" : ".mp3");
 
-            if (r.data.success && r.data.result.downloadUrl) {
-                const streamLink = r.data.result.downloadUrl;
-                
-                const media = isVideo 
-                    ? new AudioVideoContent({ video: { url: streamLink }, audio: { url: streamLink } })
-                    : new AudioContent({ url: streamLink });
-                
-                await player.join(chatId, media);
-                
-                await bot.editMessageCaption(`▶️ <b>Streaming...</b>\n🎵 ${r.data.result.title}`, { 
-                    chat_id: chatId, 
-                    message_id: msgId,
-                    parse_mode: 'HTML',
-                    reply_markup: { inline_keyboard: [[{ text: "⏹ Stop", callback_data: "stop_stream" }]] }
-                });
+        await bot.editMessageCaption(`✅ Download Selesai. Memproses...`, { chat_id: chatId, message_id: msgId });
 
-                player.on('finish', () => { player.leave(chatId); });
+        if (!isStream) {
+            await bot.sendChatAction(chatId, isVideo ? 'upload_video' : 'upload_audio');
+            if (isVideo) {
+                await bot.sendVideo(chatId, filePath, { caption: title });
+            } else {
+                await bot.sendAudio(chatId, filePath, { caption: title, title: title });
             }
+            cleanup(filePath);
+            bot.deleteMessage(chatId, msgId);
+        } 
+        else {
+            await bot.editMessageCaption('📞 Joining Voice Chat...', { chat_id: chatId, message_id: msgId });
+            
+            let mediaInput;
+            
+            if (isVideo) {
+                mediaInput = {
+                    video: { source: filePath },
+                    audio: { source: filePath }
+                };
+            } else {
+                mediaInput = {
+                    audio: { source: filePath }
+                };
+            }
+
+            await player.join(chatId, mediaInput);
+            
+            playing.set(chatId, { file: filePath });
+
+            await bot.editMessageCaption(`▶️ <b>Playing (Local File)</b>\n🎵 ${title}`, { 
+                chat_id: chatId, 
+                message_id: msgId,
+                parse_mode: 'HTML',
+                reply_markup: { inline_keyboard: [[{ text: "⏹ Stop", callback_data: "stop_stream" }]] }
+            });
+
+            player.on('finish', () => { 
+                player.leave(chatId);
+                cleanup(filePath);
+                playing.delete(chatId);
+                bot.sendMessage(chatId, '✅ Selesai diputar.');
+            });
         }
 
     } catch (e) {
-        fail(chatId, msgId, "Callback Error", e);
+        fail(chatId, msgId, "Proses Error", e);
     }
 });
 
 bot.onText(/\/stop/, async (msg) => {
     await player.leave(msg.chat.id);
-    bot.sendMessage(msg.chat.id, "⏹ Player stopped.");
+    if (playing.has(msg.chat.id)) {
+        cleanup(playing.get(msg.chat.id).file);
+        playing.delete(msg.chat.id);
+    }
+    bot.sendMessage(msg.chat.id, "⏹ Stopped.");
 });
 
 console.log("BOT AKTIF...");
