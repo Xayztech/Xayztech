@@ -8,8 +8,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER BOT (FIXED: INSTALLATION PROCESS) ===${NC}"
-echo -e "${YELLOW}Memperbaiki Error: Cannot find module 'telegraf'${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER BOT (FIXED: BUILD TOOLS & WRTC) ===${NC}"
+echo -e "${YELLOW}Fixing: node-pre-gyp not found & npm error code 1${NC}"
 echo ""
 
 # 1. INPUT
@@ -20,11 +20,12 @@ echo ""
 read -p "Masukkan URL Thumbnail: " INPUT_THUMB
 if [ -z "$INPUT_THUMB" ]; then INPUT_THUMB="https://files.catbox.moe/fm0qng.jpg"; fi
 
-# 2. PERSIAPAN SYSTEM
+# 2. SYSTEM DEPENDENCIES (UPDATE TOTAL)
 echo ""
-echo -e "${YELLOW}[1/6] Update System & Install Tools...${NC}"
+echo -e "${YELLOW}[1/7] Menginstall Alat Kompilasi (Wajib untuk Voice Call)...${NC}"
 sudo apt-get update -y
-sudo apt-get install -y screen curl build-essential git ffmpeg python3
+# Tambahan: python-is-python3 dan libtool untuk fix wrtc
+sudo apt-get install -y screen curl build-essential git ffmpeg python3 python-is-python3 libtool autoconf automake g++ make
 
 if ! command -v node &> /dev/null; then
     echo "Install Node.js v20..."
@@ -32,21 +33,31 @@ if ! command -v node &> /dev/null; then
     sudo apt-get install -y nodejs
 fi
 
-# 3. BERSIHKAN & BUAT FOLDER
+# 3. FIX NPM PERMISSIONS & GLOBAL TOOLS (SOLUSI ERROR KAMU)
 echo ""
-echo -e "${YELLOW}[2/6] Reset Folder Project...${NC}"
+echo -e "${YELLOW}[2/7] Menginstall node-pre-gyp secara Global...${NC}"
+# Konfigurasi agar root bisa install tanpa error permission
+npm config set unsafe-perm true
+npm config set user 0
+
+# Install alat pembangun yang hilang tadi
+npm install -g node-gyp @mapbox/node-pre-gyp
+
+# 4. RESET FOLDER
+echo ""
+echo -e "${YELLOW}[3/7] Menyiapkan Folder...${NC}"
 rm -rf my_yt_bot
 mkdir -p my_yt_bot
 CURRENT_DIR=$(pwd)
 BOT_DIR="$CURRENT_DIR/my_yt_bot"
 cd "$BOT_DIR"
 
-# 4. BUAT PACKAGE.JSON
-echo -e "${YELLOW}[3/6] Membuat package.json...${NC}"
+# 5. PACKAGE.JSON
+echo -e "${YELLOW}[4/7] Membuat package.json...${NC}"
 cat << 'EOF' > package.json
 {
-  "name": "yt-stream-bot-final",
-  "version": "3.0.0",
+  "name": "yt-stream-bot-fixed",
+  "version": "4.0.0",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -62,13 +73,13 @@ cat << 'EOF' > package.json
 }
 EOF
 
-# 5. CONFIG FILE
+# 6. CONFIG
 cat << EOF > config.js
 module.exports = { botToken: "$INPUT_TOKEN", thumbUrl: "$INPUT_THUMB" };
 EOF
 
-# 6. BUAT INDEX.JS (DUAL CLIENT LOGIC - YANG BENAR)
-echo -e "${YELLOW}[4/6] Menulis Kode Bot (index.js)...${NC}"
+# 7. INDEX.JS (KODE TETAP SAMA KARENA LOGICNYA SUDAH BENAR)
+echo -e "${YELLOW}[5/7] Menulis Kode Bot...${NC}"
 cat << 'EOF' > index.js
 const { Telegraf, Markup } = require('telegraf');
 const { TelegramClient } = require('telegram');
@@ -83,21 +94,16 @@ const API_HASH = "b18441a1ff607e10a989891a5462e627";
 const stringSession = new StringSession(""); 
 
 (async () => {
-    console.log("🔄 System Starting...");
+    console.log("🔄 Memulai Sistem...");
 
-    // 1. Bot API
     const bot = new Telegraf(config.botToken);
-
-    // 2. MTProto Client
     const client = new TelegramClient(stringSession, API_ID, API_HASH, { connectionRetries: 5 });
     await client.start({ botAuthToken: config.botToken });
     console.log("✅ MTProto Connected");
 
-    // 3. Player
     const player = new GramTGCalls(client);
     const playerState = {};
 
-    // --- MENU ---
     const createMenuText = (name) => `
 <b><blockquote>==================================</blockquote></b>
 <b><blockquote>Olla👋, ${name}
@@ -116,23 +122,21 @@ const stringSession = new StringSession("");
         const name = ctx.from.first_name || 'User';
         ctx.replyWithPhoto(config.thumbUrl, { caption: createMenuText(name), parse_mode: 'HTML' });
     });
-
+    
     bot.command('menu', (ctx) => {
         const name = ctx.from.first_name || 'User';
         ctx.replyWithPhoto(config.thumbUrl, { caption: createMenuText(name), parse_mode: 'HTML' });
     });
 
-    // --- SEARCH ---
     async function searchYouTube(query) {
         const r = await yts(query);
         return r.videos.length > 0 ? r.videos[0] : null;
     }
 
-    // --- COMMANDS ---
     bot.command(['ytvid', 'ytmusic'], async (ctx) => {
         const isMusic = ctx.message.text.includes('ytmusic');
         const query = ctx.message.text.split(' ').slice(1).join(' ');
-        if (!query) return ctx.reply(`Contoh: /${isMusic ? 'ytmusic' : 'ytvid'} Judul Lagu`);
+        if (!query) return ctx.reply(`Contoh: /${isMusic ? 'ytmusic' : 'ytvid'} Judul`);
         
         const video = await searchYouTube(query);
         if (!video) return ctx.reply('Tidak ditemukan.');
@@ -149,7 +153,6 @@ const stringSession = new StringSession("");
         });
     });
 
-    // --- STREAM HANDLER ---
     bot.action(/stream_(vid|mus)_(.+)/, async (ctx) => {
         const type = ctx.match[1];
         const id = ctx.match[2];
@@ -222,7 +225,7 @@ const stringSession = new StringSession("");
         delete playerState[ctx.chat.id];
         ctx.reply("⏹ Stopped.");
     });
-
+    
     bot.action(['seek_back', 'seek_fwd'], async (ctx) => {
         const id = ctx.chat.id;
         if (playerState[id]) {
@@ -240,36 +243,33 @@ const stringSession = new StringSession("");
 })();
 EOF
 
-# 7. INSTALL DEPENDENCIES (CRUCIAL STEP)
+# 8. INSTALL DEPENDENCIES (WITH FORCE & UNSAFE-PERM)
 echo ""
-echo -e "${YELLOW}[5/6] Menginstall Modules (Mohon Tunggu, Jangan di-Cancel)...${NC}"
+echo -e "${YELLOW}[6/7] Menginstall Modules (Tunggu proses node-gyp)...${NC}"
 
-# Bersihkan cache npm agar tidak ada file korup
-npm cache clean --force > /dev/null 2>&1
+# Hapus cache agar bersih
+npm cache clean --force
 
-# Install dan TAMPILKAN OUTPUT agar kita tahu kalau gagal
-npm install
+# Install dengan flag khusus untuk mencegah error wrtc/node-pre-gyp
+# --unsafe-perm: abaikan error root
+# --force: paksa install meskipun ada warning deprecated
+npm install --unsafe-perm --force
 
-# CEK APAKAH TELEGRAF BERHASIL DIINSTALL
-if [ ! -d "node_modules/telegraf" ]; then
-    echo ""
-    echo -e "${RED}[ERROR] Instalasi Gagal! 'telegraf' tidak ditemukan.${NC}"
-    echo -e "${YELLOW}Mencoba install ulang secara manual...${NC}"
-    npm install telegraf yt-search @distube/ytdl-core gram-tgcalls telegram input
+# Cek manual jika install gagal
+if [ ! -d "node_modules/gram-tgcalls" ]; then
+    echo -e "${RED}[WARN] Instalasi lambat atau gagal sebagian. Mencoba fix...${NC}"
+    npm install gram-tgcalls --unsafe-perm
 fi
 
-# 8. JALANKAN
+# 9. RUN
 echo ""
-echo -e "${YELLOW}[6/6] Menjalankan Bot...${NC}"
+echo -e "${YELLOW}[7/7] Menjalankan Bot...${NC}"
 
-# Matikan screen lama
 screen -X -S ytbot quit 2>/dev/null
-
-# Jalankan screen baru dengan perintah pindah folder yang ketat
 screen -dmS ytbot bash -c "cd '$BOT_DIR' && npm start"
 
 echo ""
 echo -e "${GREEN}=============================================${NC}"
-echo -e "${GREEN}   ✅ FIX SELESAI! SILAKAN CEK LOG SEKARANG  ${NC}"
+echo -e "${GREEN}   ✅ PROSES SELESAI!                        ${NC}"
 echo -e "${GREEN}=============================================${NC}"
 echo -e "Cek Log: ${YELLOW}screen -r ytbot${NC}"
