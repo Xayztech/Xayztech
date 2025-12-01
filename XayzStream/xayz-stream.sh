@@ -1,51 +1,44 @@
 #!/bin/bash
 
-echo "=== BOT STREAM BY: @XYCoolcraft ==="
+echo "=== AUTO INSTALLER STREAM BOT (LATEST V3 + VENV + UI MENU FIX) ==="
+echo "Author: @XYCoolcraft"
 echo ""
 
-screen -X -S XayzStream quit 2>/dev/null
-screen -wipe 2>/dev/null
 
-# 2. Input Data (Biar file config bersih)
+# 2. Input Data
 read -p "API ID: " api_id
 read -p "API HASH: " api_hash
 read -p "BOT TOKEN: " bot_token
 
-# 3. UNINSTALL SEMUA LIBRARY SAMPAH (PENTING!)
-# Kita hapus semua library yang tadi kamu kasih di contoh, biar VPS lega.
+# 3. Bersihkan Folder Lama
 rm -rf downloads
-mkdir -p downloads
+rm -rf media_storage 
+rm -rf session.txt
 
-# 4. Install Paket Sistem Dasar
+# 4. Install Paket Sistem
 sudo apt-get update -y
-sudo apt-get install -y python3 python3-pip ffmpeg screen git
+sudo apt-get install -y python3 python3-pip python3-venv ffmpeg screen git
 
-# 5. Buat requirements.txt VERSI BERSIH (Hanya yang dipakai)
-cat <<EOF > requirements.txt
-pyrogram
-tgcrypto==1.2.5
-py-tgcalls==2.0.2
-ntgcalls==1.2.1
-numpy=1.26.4
-youtube-search-python
-requests
-pyromod
-EOF
+# 5. Buat Virtual Environment (Folder 'downloads')
+echo "[+] Membuat Virtual Environment..."
+python3 -m venv downloads
 
-# 6. Install Library Ringan
-echo "[+] Menginstall Library..."
-pip3 install --upgrade pip
-pip3 install -r requirements.txt
+# 6. Aktifkan Venv
+source downloads/bin/activate
 
-# 7. Buat config.py
+# 7. Install Library (Di dalam Venv)
+echo "[+] Menginstall Library Terbaru..."
+pip install --upgrade pip
+pip install pyrogram tgcrypto pytgcalls youtube-search-python requests pyromod
+
+# 8. Buat config.py
 cat <<EOF > config.py
 API_ID = ${api_id}
 API_HASH = "${api_hash}"
 BOT_TOKEN = "${bot_token}"
 EOF
 
-# 8. Buat bot.py
-# Kode ini disesuaikan khusus untuk library versi 2
+# 9. Buat bot.py (MENU SUDAH DIPERBAIKI)
 cat <<'EOF' > bot.py
 import os
 import asyncio
@@ -53,14 +46,15 @@ import requests
 from pyrogram import Client, filters, errors
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls import PyTgCalls
-from pytgcalls.types import InputAudioStream, InputVideoStream
+from pytgcalls.types import MediaStream, AudioQuality, VideoQuality
 from youtubesearchpython import VideosSearch
 from pyromod import listen
 import config
 
-# Init Client
+STORAGE_DIR = "media_storage"
+
 bot = Client(
-    "bot_clean",
+    "bot_manager",
     api_id=config.API_ID,
     api_hash=config.API_HASH,
     bot_token=config.BOT_TOKEN
@@ -71,14 +65,11 @@ call_py = None
 IS_USERBOT_ACTIVE = False
 active_players = {}
 
-# --- Helper ---
 def parse_duration(duration_str):
     try:
         parts = duration_str.split(':')
-        if len(parts) == 2:
-            return int(parts[0]) * 60 + int(parts[1])
-        elif len(parts) == 3:
-            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        if len(parts) == 2: return int(parts[0]) * 60 + int(parts[1])
+        elif len(parts) == 3: return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
         return 0
     except: return 0
 
@@ -101,10 +92,10 @@ def get_keyboard(is_paused):
     icon = "▶️" if is_paused else "⏸️"
     cb = "resume" if is_paused else "pause"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("⏹️ Stop", callback_data="stop"), InlineKeyboardButton(icon, callback_data=cb)]
+        [InlineKeyboardButton("⟨|| 5s", callback_data="rewind"), InlineKeyboardButton(icon, callback_data=cb), InlineKeyboardButton("5s ||⟩", callback_data="forward")],
+        [InlineKeyboardButton("⏹️ Stop", callback_data="stop")]
     ])
 
-# --- Search & DL ---
 def search_yt(query):
     try:
         s = VideosSearch(query, limit=1).result()
@@ -117,30 +108,35 @@ def download_file(url, is_video):
     try:
         if is_video:
             api = f"https://api.betabotz.eu.org/api/download/ytmp4?url={url}&apikey=Btz-XYCoolcraft"
-            res = requests.get(api, timeout=60).json()
+            res = requests.get(api, timeout=120).json()
             dl = res.get('result', {}).get('mp4')
             ext = 'mp4'
         else:
             api = "https://api.nekolabs.web.id/downloader/youtube/v1"
-            res = requests.get(api, params={"url": url, "format": "mp3", "quality": "128", "type": "audio"}, timeout=60).json()
+            res = requests.get(api, params={"url": url, "format": "mp3", "quality": "128", "type": "audio"}, timeout=120).json()
             dl = res.get('result', {}).get('downloadUrl')
             ext = 'mp3'
 
         if not dl: return None
-        path = f"downloads/{url.split('v=')[-1]}.{ext}"
+        
+        vid_id = url.split('v=')[-1]
+        path = f"{STORAGE_DIR}/{vid_id}.{ext}"
+        
+        if not os.path.exists(STORAGE_DIR): os.makedirs(STORAGE_DIR)
         if os.path.exists(path): return path
         
-        with requests.get(dl, stream=True, timeout=120) as r:
+        with requests.get(dl, stream=True, timeout=300) as r:
             r.raise_for_status()
             with open(path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192): f.write(chunk)
         return path
-    except: return None
+    except Exception as e:
+        print(f"DL Error: {e}")
+        return None
 
-# --- Core System ---
 async def start_system():
     global userbot, call_py, IS_USERBOT_ACTIVE
-    if not os.path.exists("session.txt"): return False, "No Session"
+    if not os.path.exists("session.txt"): return False, "Session not found"
     try:
         with open("session.txt") as f: sess = f.read().strip()
         userbot = Client("ub_sess", api_id=config.API_ID, api_hash=config.API_HASH, session_string=sess)
@@ -148,92 +144,101 @@ async def start_system():
         call_py = PyTgCalls(userbot)
         await call_py.start()
         IS_USERBOT_ACTIVE = True
-        return True, "Ready"
+        return True, "System Ready (V3 Latest)"
     except Exception as e:
         IS_USERBOT_ACTIVE = False
         return False, str(e)
 
-async def join_call(chat_id, path, is_video):
+async def ensure_ub(chat_id):
     try:
-        # LOGIKA V2 LEGACY
-        stream = InputAudioStream(path)
-        video_stream = InputVideoStream(path) if is_video else None
-        
-        await call_py.join_group_call(
-            chat_id,
-            stream,
-            stream_video=video_stream
-        )
-    except Exception as e:
-        # Jika error "Already Joined", coba leave dulu lalu join lagi
+        m = await bot.get_chat_member(chat_id, userbot.me.id)
+        if m.status in ['left', 'kicked']: raise Exception
+        return True
+    except:
         try:
-            await call_py.leave_group_call(chat_id)
+            await bot.add_chat_members(chat_id, userbot.me.id)
             await asyncio.sleep(1)
-            await call_py.join_group_call(chat_id, stream, stream_video=video_stream)
-        except:
-            raise e
+            return True
+        except: return False
 
-# --- Handlers ---
 @bot.on_message(filters.command("start"))
 async def start(c, m):
+    user = m.from_user.first_name
+    caption_text = f"""
+<b><blockquote>==================================</blockquote></b>
+
+<b><blockquote>Olla👋, {user} このボットは、YouTube Music と YouTube Video Stream のボットです。|| 作成および開発者: @XYCoolcraft</blockquote></b>
+
+<b><blockquote>==⟩ MENU ⟨==</blockquote></b>
+
+/ytvid [judul] - Video Call Sharing
+/ytmusic [judul] - Voice Call Music
+/login - Hubungkan Userbot (Private)
+/stop - Matikan Player
+
+<b><blockquote>==================================</blockquote></b>
+"""
     await m.reply_photo(
-        "https://cdn-icons-png.flaticon.com/512/1384/1384060.png",
-        caption=f"<b>Halo {m.from_user.first_name}!</b>\nBot Musik & Video (Clean Version).\n\n/ytvid [judul]\n/ytmusic [judul]\n/login (Private)\n/stop"
+        photo="https://cdn-icons-png.flaticon.com/512/1384/1384060.png",
+        caption=caption_text,
+        quote=True
     )
 
 @bot.on_message(filters.command("login") & filters.private)
 async def login(c, m):
-    if IS_USERBOT_ACTIVE: return await m.reply("Sudah Konek.")
+    if IS_USERBOT_ACTIVE: return await m.reply("Connected.")
     try:
-        ph = (await c.ask(m.chat.id, "No HP:", timeout=60)).text.strip()
+        ph = (await c.ask(m.chat.id, "📱 No HP (+62..):", timeout=60)).text.strip()
         tc = Client(":memory:", api_id=config.API_ID, api_hash=config.API_HASH)
         await tc.connect()
         sc = await tc.send_code(ph)
-        otp = (await c.ask(m.chat.id, "OTP (Spasi):", timeout=60)).text.replace(" ", "")
+        otp = (await c.ask(m.chat.id, "📩 OTP (SPASI):", timeout=60)).text.replace(" ", "")
         try: await tc.sign_in(ph, sc.phone_code_hash, otp)
         except errors.SessionPasswordNeeded:
-            pw = (await c.ask(m.chat.id, "2FA:", timeout=60)).text
+            pw = (await c.ask(m.chat.id, "🔐 Password 2FA:", timeout=60)).text
             await tc.check_password(pw)
         sess = await tc.export_session_string()
         with open("session.txt", "w") as f: f.write(sess)
         await tc.disconnect()
         ok, msg = await start_system()
-        await m.reply(f"Login Sukses: {msg}")
-    except Exception as e: await m.reply(f"Error: {e}")
+        await m.reply(f"✅ Login Sukses: {msg}")
+    except Exception as e: await m.reply(f"❌ Error: {e}")
 
 @bot.on_message(filters.command(["ytvid", "ytmusic", "play"]) & filters.group)
 async def play(c, m):
-    if not IS_USERBOT_ACTIVE: return await m.reply("Userbot Off. /login dulu.")
+    if not IS_USERBOT_ACTIVE: return await m.reply("❌ /login di Private dulu")
     q = " ".join(m.command[1:])
-    if not q: return await m.reply("Judul?")
+    if not q: return await m.reply("❌ Judul?")
     vid = m.command[0] in ["ytvid", "play"]
     
-    msg = await m.reply("🔍 ...")
+    msg = await m.reply("🔍 Mencari...")
     data = search_yt(q)
-    if not data: return await msg.edit("404")
+    if not data: return await msg.edit("❌ 404 Not Found")
     
-    await msg.edit("📥 Downloading...")
+    await msg.edit("📥 Downloading to Server...")
     path = download_file(data['link'], vid)
-    if not path: return await msg.edit("Gagal DL")
+    if not path: return await msg.edit("❌ Gagal Download / Timeout")
     
-    # Auto Add Userbot
-    try: await bot.get_chat_member(m.chat.id, userbot.me.id)
-    except: 
-        try: await bot.add_chat_members(m.chat.id, userbot.me.id)
-        except: return await msg.edit("Masukkan Userbot jadi admin manual!")
-
+    if not await ensure_ub(m.chat.id): return await msg.edit("❌ Gagal Add Userbot")
+    
     await msg.edit("▶️ Playing...")
     try:
-        await join_call(m.chat.id, path, vid)
+        stream = MediaStream(
+            path,
+            audio_parameters=AudioQuality.HIGH,
+            video_parameters=VideoQuality.SD_480p if vid else None,
+            video_flags=MediaStream.Flags.IGNORE if not vid else None
+        )
+        await call_py.play(m.chat.id, stream)
     except Exception as e:
-        return await msg.edit(f"Err Call: {e}")
+        return await msg.edit(f"❌ Err V3: {e}")
     
     dur = parse_duration(data['duration'])
-    active_players[m.chat.id] = {'title': data['title'], 'duration': dur, 'current': 0, 'paused': False}
+    active_players[m.chat.id] = {'title': data['title'], 'duration': dur, 'current': 0, 'paused': False, 'thumb': data['thumb']}
     
     await m.reply_photo(
         data['thumb'],
-        caption=f"💿 <b>{data['title']}</b>\n{generate_bar(0, dur)}",
+        caption=f"💿 <b>{data['title']}</b>\n\n{generate_bar(0, dur)}\n\n👤 {m.from_user.mention}",
         reply_markup=get_keyboard(False)
     )
     await msg.delete()
@@ -244,27 +249,32 @@ async def cb(c, q):
     if cid not in active_players: return
     d = q.data
     p = active_players[cid]
-    
     try:
         if d == "stop":
-            await call_py.leave_group_call(cid)
+            await call_py.leave_call(cid)
             del active_players[cid]
             await q.message.delete()
         elif d == "pause":
             await call_py.pause_stream(cid)
             p['paused'] = True
-            await q.message.edit_reply_markup(get_keyboard(True))
         elif d == "resume":
             await call_py.resume_stream(cid)
             p['paused'] = False
-            await q.message.edit_reply_markup(get_keyboard(False))
+        
+        if d in ["pause", "resume"]:
+             bar = generate_bar(p['current'], p['duration'])
+             icon = "⏸️" if p['paused'] else "▶️"
+             await q.message.edit_caption(
+                 f"💿 <b>{p['title']}</b>\n\n{bar}\n\n👤 {icon}",
+                 reply_markup=get_keyboard(p['paused'])
+             )
     except: pass
 
 async def main():
-    if not os.path.exists("downloads"): os.mkdir("downloads")
+    if not os.path.exists(STORAGE_DIR): os.mkdir(STORAGE_DIR)
     await bot.start()
     await start_system()
-    print("BOT BERSIH SIAP")
+    print("BOT V3 LATEST + UI MENU READY")
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
@@ -272,13 +282,14 @@ if __name__ == "__main__":
     loop.run_until_complete(main())
 EOF
 
-# 9. Script Start
+# 10. Buat Script Start
 cat <<EOF > start.sh
 #!/bin/bash
-screen -S XayzBot python3 bot.py
-echo "Bot berjalan. Ketik: screen -r XayzBot"
+source downloads/bin/activate
+screen -S BotScreen python3 bot.py
+echo "Bot berjalan di VENV 'downloads'. Ketik: screen -r BotScreen"
 EOF
 chmod +x start.sh
 
-# 10. Eksekusi
+# 11. Jalankan
 ./start.sh
