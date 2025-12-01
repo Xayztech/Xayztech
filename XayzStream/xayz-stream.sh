@@ -7,8 +7,8 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 clear
-echo -e "${CYAN}=== AUTO INSTALLER (ULTIMATE PLAYER & AUTO-ADD USERBOT) ===${NC}"
-echo -e "${YELLOW}Fitur: Progress Bar, Seek 5s, Auto-Add Userbot, API V1/V3${NC}"
+echo -e "${CYAN}=== AUTO INSTALLER (FIX NPM VERSION ERROR) ===${NC}"
+echo -e "${YELLOW}Memperbaiki Error: No matching version found${NC}"
 echo ""
 
 read -p "1. Masukkan Token Bot: " INPUT_TOKEN
@@ -32,11 +32,19 @@ rm -rf my_yt_bot
 mkdir -p my_yt_bot
 cd my_yt_bot
 
-echo -e "${YELLOW}[NPM] Install Library...${NC}"
+echo -e "${YELLOW}[NPM] Install Library (Auto Version)...${NC}"
 npm init -y > /dev/null
-npm install node-telegram-bot-api axios yt-search gram-tgcalls@2.4.0 telegram input
 
-# --- LOGIN USERBOT & DAPATKAN ID ---
+# PERBAIKAN DISINI: Hapus '@2.4.0' biar otomatis cari yang ada
+npm install node-telegram-bot-api axios yt-search gram-tgcalls telegram input
+
+# Cek jika install gagal
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Gagal Install Library. Coba lagi nanti.${NC}"
+    exit 1
+fi
+
+# --- LOGIN USERBOT ---
 cat << 'EOF' > login.js
 const { TelegramClient } = require("telegram");
 const { StringSession } = require("telegram/sessions");
@@ -57,10 +65,7 @@ const stringSession = new StringSession("");
         onError: (err) => console.log(err),
     });
     
-    // Simpan Session
     fs.writeFileSync("session.txt", client.session.save());
-    
-    // Dapatkan ID Userbot Sendiri
     const me = await client.getMe();
     fs.writeFileSync("userbot_id.txt", me.id.toString());
     
@@ -122,9 +127,7 @@ let client;
 })();
 
 // --- GLOBAL VARS ---
-// Map untuk menyimpan status playback per chat: { file, title, duration, startTime, isPaused, timer, type }
 const activePlayers = new Map();
-
 const settings = {
     UA_NEKO: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 };
@@ -140,33 +143,25 @@ function formatTime(seconds) {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-// FUNGSI PROGRESS BAR CANGGIH
 function createProgressBar(current, total) {
-    const size = 10; // Panjang batang
+    const size = 10;
     const percentage = Math.min(Math.max(current / total, 0), 1);
     const progress = Math.round(size * percentage);
     const emptyProgress = size - progress;
-    
-    const filled = '—'.repeat(progress);
-    const empty = '—'.repeat(emptyProgress);
-    
-    return `${filled}⚪${empty}`;
+    return `${'—'.repeat(progress)}⚪${'—'.repeat(emptyProgress)}`;
 }
 
-// FUNGSI CEK & ADD USERBOT
 async function checkAndAddUserbot(chatId) {
     try {
-        // Cek apakah userbot sudah ada di grup
         await bot.getChatMember(chatId, config.userbotId);
-        return true; // Sudah ada
+        return true; 
     } catch (e) {
-        // Jika error, berarti tidak ada. Coba tambahkan.
         try {
-            await bot.unbanChatMember(chatId, config.userbotId); // Unban in case kicked
+            await bot.unbanChatMember(chatId, config.userbotId); 
             await bot.addChatMember(chatId, config.userbotId);
             return true;
         } catch (addError) {
-            return false; // Gagal (Mungkin bot bukan admin)
+            return false; 
         }
     }
 }
@@ -214,7 +209,7 @@ function normalizeYouTubeUrl(raw) {
 // --- COMMANDS ---
 const menuText = `
 <b><blockquote>==================================</blockquote></b>
-<b><blockquote>Olla👋, User
+<b><blockquote>Olla👋,
 Ultimate Bot Player
 || Dev: @XYCoolcraft</blockquote></b>
 <b><blockquote>============⟩ MENU ⟨============</blockquote></b>
@@ -265,13 +260,11 @@ bot.onText(/^\/play(?:@\w+)?(?:\s+(.+))?$/i, async (msg, match) => {
   } catch (e) { fail(chatId, msg.message_id, "Proses gagal", e); }
 });
 
-// --- FUNGSI UPDATE UI PLAYER ---
 async function updatePlayerUI(chatId, msgId) {
     const state = activePlayers.get(chatId);
     if (!state) return;
 
     const currentSeconds = Math.floor((Date.now() - state.startTime) / 1000);
-    // Jika waktu habis
     if (currentSeconds >= state.duration) {
         clearInterval(state.timer);
         return; 
@@ -301,24 +294,15 @@ ${timeStr}
     };
 
     try {
-        await bot.editMessageCaption(caption, {
-            chat_id: chatId,
-            message_id: msgId,
-            parse_mode: 'HTML',
-            reply_markup: keyboard
-        });
-    } catch (e) {
-        // Abaikan error jika pesan tidak berubah
-    }
+        await bot.editMessageCaption(caption, { chat_id: chatId, message_id: msgId, parse_mode: 'HTML', reply_markup: keyboard });
+    } catch (e) {}
 }
 
-// --- CALLBACK QUERY UTAMA ---
 bot.on('callback_query', async (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
     const msgId = query.message.message_id;
 
-    // --- TOMBOL PLAYER CONTROL ---
     if (activePlayers.has(chatId)) {
         const state = activePlayers.get(chatId);
         
@@ -333,7 +317,7 @@ bot.on('callback_query', async (query) => {
         if (data === 'toggle_pause') {
             if (state.isPaused) {
                 await player.resume(chatId);
-                state.startTime = Date.now() - (state.pausedAt); // Sesuaikan waktu
+                state.startTime = Date.now() - (state.pausedAt);
                 state.isPaused = false;
             } else {
                 await player.pause(chatId);
@@ -344,46 +328,30 @@ bot.on('callback_query', async (query) => {
             return;
         }
 
-        // FITUR SEEK (Maju/Mundur) - Membutuhkan Restart Stream
-        // Karena gram-tgcalls file stream tidak support seek realtime tanpa restart
         if (data === 'rw_5' || data === 'ff_5') {
-            // Logika seek kompleks: Perlu kill stream dan start lagi dengan offset FFMPEG.
-            // Untuk file lokal sederhana, ini cukup rumit. 
-            // Kita simulasikan UI saja agar user tidak bingung, atau restart stream.
-            
             let current = Math.floor((Date.now() - state.startTime) / 1000);
             if (data === 'rw_5') current = Math.max(0, current - 5);
             if (data === 'ff_5') current = Math.min(state.duration, current + 5);
-            
-            // Set waktu visual baru (Koreksi timestamp)
             state.startTime = Date.now() - (current * 1000);
             updatePlayerUI(chatId, msgId);
             return bot.answerCallbackQuery(query.id, { text: `Seek to ${formatTime(current)}` });
         }
     }
 
-    // --- LOGIC START STREAM ---
     const parts = data.split('_');
-    const type = parts[0]; // stvid / stmus
-    // Gabungkan kembali URL jika ada underscore di URL
+    const type = parts[0]; 
     const url = parts.slice(1, -1).join('_'); 
     const duration = parseInt(parts[parts.length - 1]);
 
     if (!url || (type !== 'stvid' && type !== 'stmus')) return;
 
     try {
-        // 1. CEK USERBOT
         const isUserbotHere = await checkAndAddUserbot(chatId);
         if (!isUserbotHere) {
-            // GAGAL ADD -> COBA LAGI (SIMULASI WAIT)
-            await bot.sendMessage(chatId, "⚠️ <b>Userbot tidak ada di grup!</b>\nSaya mencoba menambahkannya... Jika gagal, jadikan saya admin lalu coba lagi.", { parse_mode: 'HTML' });
-            
-            // Tunggu 2 detik lalu coba add lagi
+            await bot.sendMessage(chatId, "⚠️ <b>Userbot tidak ada!</b>\nSaya coba tambahkan... Jika gagal, jadikan saya admin.", { parse_mode: 'HTML' });
             await new Promise(r => setTimeout(r, 2000));
-            const retry = await checkAndAddUserbot(chatId);
-            
-            if (!retry) {
-                return bot.sendMessage(chatId, "❌ <b>Gagal Menambahkan Userbot!</b>\nMohon jadikan bot ini ADMIN dengan izin 'Add Users', lalu tekan tombol tadi lagi.", { parse_mode: 'HTML' });
+            if (!await checkAndAddUserbot(chatId)) {
+                return bot.sendMessage(chatId, "❌ <b>Gagal Add Userbot!</b> Jadikan bot ADMIN.", { parse_mode: 'HTML' });
             }
         }
 
@@ -391,7 +359,6 @@ bot.on('callback_query', async (query) => {
         let dlUrl, title;
 
         if (isVideo) {
-            // VIDEO -> BETABOTZ
             await bot.editMessageCaption('🔄 Menyiapkan Video...', { chat_id: chatId, message_id: msgId });
             const r = await axios.get("https://api.betabotz.eu.org/api/download/ytmp4", {
                 params: { url: url, apikey: config.apikeyBeta }, timeout: 120000
@@ -400,7 +367,6 @@ bot.on('callback_query', async (query) => {
             dlUrl = r.data.result.mp4;
             title = r.data.result.title;
         } else {
-            // AUDIO -> NEKOLABS V1
             await bot.editMessageCaption('🔄 Menyiapkan Audio...', { chat_id: chatId, message_id: msgId });
             const r = await axios.get("https://api.nekolabs.web.id/downloader/youtube/v1", {
                 params: { url: url, type: "audio", format: "mp3" },
@@ -425,20 +391,18 @@ bot.on('callback_query', async (query) => {
 
         await player.join(chatId, mediaInput);
 
-        // SETUP PLAYER STATE
-        const timer = setInterval(() => updatePlayerUI(chatId, msgId), 3000); // Update tiap 3 detik
+        const timer = setInterval(() => updatePlayerUI(chatId, msgId), 3000);
         
         activePlayers.set(chatId, {
             file: filePath,
             title: title,
-            duration: duration || 300, // Default 5 menit jika duration null
+            duration: duration || 300,
             startTime: Date.now(),
             isPaused: false,
             timer: timer,
             type: isVideo ? 'vid' : 'mus'
         });
 
-        // Trigger UI Pertama
         updatePlayerUI(chatId, msgId);
 
         player.on('finish', () => { 
