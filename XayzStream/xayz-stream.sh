@@ -92,14 +92,14 @@ def download_and_save(url, is_video=True):
     try:
         if is_video:
             api_url = f"https://api.betabotz.eu.org/api/download/ytmp4?url={url}&apikey=Btz-XYCoolcraft"
-            req = requests.get(api_url).json()
+            req = requests.get(api_url, timeout=120).json()
             if not req.get('status') or not req.get('result'): return None
             dl_url = req['result'].get('mp4')
             ext = 'mp4'
         else:
             api_url = "https://api.nekolabs.web.id/downloader/youtube/v1"
             params = {"url": url, "format": "mp3", "quality": "128", "type": "audio"}
-            req = requests.get(api_url, params=params).json()
+            req = requests.get(api_url, params=params, timeout=120).json()
             if not req.get('success') or not req.get('result'): return None
             dl_url = req['result'].get('downloadUrl')
             ext = 'mp3'
@@ -115,14 +115,15 @@ def download_and_save(url, is_video=True):
         if os.path.exists(file_path):
             return file_path
 
-        with requests.get(dl_url, stream=True) as r:
+        with requests.get(dl_url, stream=True, timeout=120) as r:
             r.raise_for_status()
             with open(file_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
         
         return file_path
-    except:
+    except Exception as e:
+        print(f"Download Error: {e}")
         return None
 
 def convert_seconds(seconds):
@@ -156,12 +157,12 @@ def get_player_keyboard(is_paused):
 async def start_userbot_system():
     global userbot, call_py, IS_USERBOT_ACTIVE
     if not os.path.exists("session.txt"):
-        return False, "No session"
+        return False, "Session file not found."
     try:
         with open("session.txt", "r") as f:
             session_str = f.read().strip()
         if not session_str:
-            return False, "Empty session"
+            return False, "Session file empty."
         
         userbot = Client(
             "userbot_session",
@@ -173,10 +174,10 @@ async def start_userbot_system():
         call_py = PyTgCalls(userbot)
         await call_py.start()
         IS_USERBOT_ACTIVE = True
-        return True, "Started"
-    except:
+        return True, "System Started."
+    except Exception as e:
         IS_USERBOT_ACTIVE = False
-        return False, "Error"
+        return False, str(e)
 
 async def ensure_userbot_in_group(chat_id):
     try:
@@ -219,11 +220,11 @@ async def start_handler(client, message):
 async def login_handler(client, message):
     global IS_USERBOT_ACTIVE
     if IS_USERBOT_ACTIVE:
-        return await message.reply("Connected.")
+        return await message.reply("Userbot is already connected.")
     
     user_id = message.chat.id
     try:
-        nomor = await client.ask(user_id, "📱 Phone (+62...):", timeout=300)
+        nomor = await client.ask(user_id, "📱 Phone Number (e.g., +628123456789):", timeout=300)
     except: return
     
     phone = nomor.text.strip()
@@ -232,12 +233,12 @@ async def login_handler(client, message):
     
     try:
         sent_code = await temp_client.send_code(phone)
-    except:
+    except Exception as e:
         await temp_client.disconnect()
-        return await message.reply("Failed sending code")
+        return await message.reply(f"Failed to send code: {e}")
     
     try:
-        otp = await client.ask(user_id, "📩 OTP (SPASI):", timeout=300)
+        otp = await client.ask(user_id, "📩 OTP Code (Use SPACE, e.g., 1 2 3 4 5):", timeout=300)
     except: return
     
     phone_code = otp.text.replace(" ", "")
@@ -246,14 +247,14 @@ async def login_handler(client, message):
         await temp_client.sign_in(phone, sent_code.phone_code_hash, phone_code)
     except errors.SessionPasswordNeeded:
         try:
-            pw = await client.ask(user_id, "🔐 2FA:", timeout=300)
+            pw = await client.ask(user_id, "🔐 2FA Password:", timeout=300)
             await temp_client.check_password(pw.text)
-        except:
+        except Exception as e:
             await temp_client.disconnect()
-            return await message.reply("Wrong Password")
-    except:
+            return await message.reply("Invalid Password.")
+    except Exception as e:
         await temp_client.disconnect()
-        return await message.reply("Login Error")
+        return await message.reply(f"Login Error: {e}")
     
     session_string = await temp_client.export_session_string()
     await temp_client.disconnect()
@@ -263,18 +264,18 @@ async def login_handler(client, message):
     
     success, msg = await start_userbot_system()
     if success:
-        await message.reply("✅ Login Success")
+        await message.reply("✅ Login Successful. System Started.")
     else:
-        await message.reply("⚠️ Saved but fail start")
+        await message.reply(f"⚠️ Login saved but failed to start: {msg}")
 
 @bot.on_message(filters.command(["ytvid", "ytmusic", "play"]) & filters.group)
 async def stream_handler(client, message):
     if not IS_USERBOT_ACTIVE:
-        return await message.reply("❌ /login first")
+        return await message.reply("❌ Userbot not connected. Please /login in Private Chat.")
 
     cmd = message.command[0]
     query = " ".join(message.command[1:])
-    if not query: return await message.reply("❌ Title?")
+    if not query: return await message.reply("❌ Please provide a title.")
     
     is_video = cmd in ["ytvid", "play"]
     mode = "Video" if is_video else "Music"
@@ -283,29 +284,37 @@ async def stream_handler(client, message):
     
     video_data = search_yt(query)
     if not video_data:
-        return await msg.edit("❌ Not Found")
+        return await msg.edit("❌ Not Found.")
     
     url = video_data['link']
     title = video_data['title']
     duration_str = video_data['duration']
     thumb = video_data['thumb']
     
-    await msg.edit(f"📥 Downloading...")
+    await msg.edit(f"📥 Downloading (Max 2 Min)...")
     
     file_path = download_and_save(url, is_video)
     
     if not file_path:
-        return await msg.edit("❌ Download Failed")
+        return await msg.edit("❌ Download Failed or Timeout (API Slow).")
     
     if not await ensure_userbot_in_group(message.chat.id):
-        return await msg.edit(f"❌ Add @{userbot.me.username} manually")
+        return await msg.edit(f"❌ Failed to add Userbot. Please add @{userbot.me.username} manually.")
 
-    await msg.edit(f"▶️ Playing...")
+    await msg.edit(f"▶️ Starting Stream from Server...")
     
     if is_video:
-        stream = MediaStream(file_path, audio_parameters=AudioQuality.HIGH, video_parameters=VideoQuality.SD_480p)
+        stream = MediaStream(
+            file_path, 
+            audio_parameters=AudioQuality.HIGH, 
+            video_parameters=VideoQuality.SD_480p
+        )
     else:
-        stream = MediaStream(file_path, audio_parameters=AudioQuality.HIGH, video_flags=MediaStream.Flags.IGNORE)
+        stream = MediaStream(
+            file_path, 
+            audio_parameters=AudioQuality.HIGH, 
+            video_flags=MediaStream.Flags.IGNORE
+        )
     
     await call_py.play(message.chat.id, stream)
     
@@ -322,7 +331,11 @@ async def stream_handler(client, message):
     bar = generate_bar(0, duration_sec)
     caption = f"💿 <b>{title}</b>\n\n{bar}\n\n👤 <b>Req:</b> {message.from_user.mention}"
     
-    await message.reply_photo(thumb, caption=caption, reply_markup=get_player_keyboard(False))
+    await message.reply_photo(
+        thumb,
+        caption=caption,
+        reply_markup=get_player_keyboard(False)
+    )
     await msg.delete()
 
 async def update_display(chat_id, message):
@@ -338,7 +351,8 @@ async def update_display(chat_id, message):
 @bot.on_callback_query()
 async def cb_handler(client, cb):
     chat_id = cb.message.chat.id
-    if chat_id not in active_players: return await cb.answer("No active player")
+    if chat_id not in active_players:
+        return await cb.answer("No active player.", show_alert=True)
     
     data = cb.data
     player = active_players[chat_id]
@@ -366,13 +380,14 @@ async def cb_handler(client, cb):
             player['current'] = max(player['current'] - 5, 0)
             await update_display(chat_id, cb.message)
             await cb.answer("Rewind 5s")
-    except: pass
+    except Exception as e:
+        print(e)
 
 async def main():
     if not os.path.exists("downloads"): os.mkdir("downloads")
     await bot.start()
     success, msg = await start_userbot_system()
-    print(f"Bot Started. Userbot: {msg}")
+    print(f"System Ready. Userbot Status: {msg}")
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
