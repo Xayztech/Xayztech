@@ -6,11 +6,11 @@ const readlineSync = require('readline-sync');
 const SERVERS = {
   '1': {
     name: 'Server 1 Kill Panel [ON]',
-    url: 'https://xayztech.vercel.app/XayzV1.js'
+    url: 'https://xayzsecure.vercel.app/XayzV1.js'
   },
   '2': {
     name: 'Server 2 Kill Panel [ON] [SLOWED BUT RELAX]',
-    url: 'https://xayzsecure.vercel.app/XayzV2'
+    url: 'https://xayzsecure.vercel.app/XayzV2.js'
   },
   '3': {
     name: 'Server 3 Kill Panel [ON] [DISK ONLY]',
