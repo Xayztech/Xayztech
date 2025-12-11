@@ -9,8 +9,12 @@ const SERVERS = {
     url: 'https://xayztech.vercel.app/XayzV1.js'
   },
   '2': {
-    name: 'Server 2 Kill Panel [ON]',
-    url: 'https://xayzsecure.vercel.com/XayzV2.js'
+    name: 'Server 2 Kill Panel [ON] [SLOWED BUT RELAX]',
+    url: 'https://xayzsecure.vercel.app/XayzV2'
+  },
+  '3': {
+    name: 'Server 3 Kill Panel [ON] [DISK ONLY]',
+    url: 'https://xayzsecure.vercel.app/XayzLive.js'
   }
 };
 
@@ -51,13 +55,13 @@ async function validasiInteraktif() {
     } catch (error) {
         throw new Error(`Gagal mengambil data: ${error.message}`);
     }
-    console.log('Masukkan Username nya');
+    console.log('Masukkan Username lu... ');
     const username = readlineSync.question('Username: ');
     const pengguna = authorizedUsers.find(u => u.username === username);
     if (!pengguna) {
         throw new Error('Username tidak ditemukan.');
     }
-    console.log('Masukkan Password nya');
+    console.log('Masukkan Password lu... ');
     const password = readlineSync.question('Password: ', {
         hideEchoBack: true
     });
