@@ -10,8 +10,8 @@ NC='\033[0m' # No Color
 # Banner
 echo -e "${BLUE}"
 echo "=================================================="
-echo "           Pterodactyl Protection - Developer By XYCoolcraft"
-echo "           Created by XYCoolcraft"
+echo "      Pterodactyl Protection - Strict Mode"
+echo "      Developer By XYCoolcraft | Xayz Tech"
 echo "=================================================="
 echo -e "${NC}"
 
@@ -30,8 +30,9 @@ print_error() {
 
 # Check if running as root
 if [[ $EUID -eq 0 ]]; then
-    print_error "This script should not be run as root"
-    exit 1
+    print_error "This script should not be run as root (Run as user with sudo if needed, but standard user is safer for web files)"
+    # Note: Usually Pterodactyl files are owned by www-data or similar, running as root is fine if we fix permissions later.
+    # Continuing but warning is shown.
 fi
 
 # Check if we're in the correct directory
@@ -42,7 +43,7 @@ if [[ ! -d "/var/www/pterodactyl" ]]; then
 fi
 
 # Backup directory
-BACKUP_DIR="/var/www/pterodactyl/backups/protect_xycoolcraft_$(date +%Y%m%d_%H%M%S)"
+BACKUP_DIR="/var/www/pterodactyl/backups/protect_xycoolcraft_strict_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
 # Function to create backup
@@ -77,7 +78,7 @@ replace_file() {
 }
 
 # ==================================================
-# 1. ANTI DELETE SERVER
+# 1. ANTI DELETE SERVER (STRICT)
 # ==================================================
 
 SERVER_DELETION_SERVICE='<?php
@@ -98,9 +99,6 @@ class ServerDeletionService
 {
     protected bool $force = false;
 
-    /**
-     * ServerDeletionService constructor.
-     */
     public function __construct(
         private ConnectionInterface $connection,
         private DaemonServerRepository $daemonServerRepository,
@@ -108,57 +106,38 @@ class ServerDeletionService
     ) {
     }
 
-    /**
-     * Set if the server should be forcibly deleted from the panel (ignoring daemon errors) or not.
-     */
     public function withForce(bool $bool = true): self
     {
         $this->force = $bool;
         return $this;
     }
 
-    /**
-     * Delete a server from the panel and remove any associated databases from hosts.
-     *
-     * @throws \Throwable
-     * @throws \Pterodactyl\Exceptions\DisplayException
-     */
     public function handle(Server $server): void
     {
         $user = Auth::user();
 
-        // 🔒 Proteksi: hanya Admin ID = 1 boleh menghapus server siapa saja.
-        // Selain itu, user biasa hanya boleh menghapus server MILIKNYA SENDIRI.
-        // Jika tidak ada informasi pemilik dan pengguna bukan admin, tolak.
+        // 🔒 Proteksi: Hanya Admin ID 1
         if ($user) {
             if ($user->id !== 1) {
-                // Coba deteksi owner dengan beberapa fallback yang umum.
-                $ownerId = $server->owner_id
-                    ?? $server->user_id
-                    ?? ($server->owner?->id ?? null)
-                    ?? ($server->user?->id ?? null);
+                // Cek pemilik asli
+                $ownerId = $server->owner_id ?? $server->user_id ?? ($server->owner?->id ?? null) ?? ($server->user?->id ?? null);
 
                 if ($ownerId === null) {
-                    // Tidak jelas siapa pemiliknya — jangan izinkan pengguna biasa menghapus.
-                    throw new DisplayException('Akses ditolak: informasi pemilik server tidak tersedia.');
+                    throw new DisplayException("Akses ditolak: Data pemilik server tidak valid. Hubungi Administrator Utama.");
                 }
 
                 if ($ownerId !== $user->id) {
-                    throw new DisplayException('Akses ditolak: Anda hanya dapat menghapus server milik Anda sendiri. Protection By XYCoolcraft - Xayz Tech');
+                    throw new DisplayException("❌ AKSES DITOLAK: Anda hanya boleh menghapus server milik Anda sendiri! Protection By XYCoolcraft - Xayz Tech");
                 }
             }
-            // jika $user->id === 1, lanjutkan (admin super)
         }
-        // Jika tidak ada $user (mis. CLI/background job), biarkan proses berjalan.
 
         try {
             $this->daemonServerRepository->setServer($server)->delete();
         } catch (DaemonConnectionException $exception) {
-            // Abaikan error 404, tapi lempar error lain jika tidak mode force
             if (!$this->force && $exception->getStatusCode() !== Response::HTTP_NOT_FOUND) {
                 throw $exception;
             }
-
             Log::warning($exception);
         }
 
@@ -170,13 +149,10 @@ class ServerDeletionService
                     if (!$this->force) {
                         throw $exception;
                     }
-
-                    // Jika gagal delete database di host, tetap hapus dari panel
                     $database->delete();
                     Log::warning($exception);
                 }
             }
-
             $server->delete();
         });
     }
@@ -214,9 +190,6 @@ class UserController extends Controller
 {
     use AvailableLanguages;
 
-    /**
-     * UserController constructor.
-     */
     public function __construct(
         protected AlertsMessageBag $alert,
         protected UserCreationService $creationService,
@@ -228,134 +201,90 @@ class UserController extends Controller
     ) {
     }
 
-    /**
-     * Display user index page.
-     */
     public function index(Request $request): View
     {
         $users = QueryBuilder::for(
-            User::query()->select('users.*')
-                ->selectRaw('COUNT(DISTINCT(subusers.id)) as subuser_of_count')
-                ->selectRaw('COUNT(DISTINCT(servers.id)) as servers_count')
-                ->leftJoin('subusers', 'subusers.user_id', '=', 'users.id')
-                ->leftJoin('servers', 'servers.owner_id', '=', 'users.id')
-                ->groupBy('users.id')
+            User::query()->select("users.*")
+                ->selectRaw("COUNT(DISTINCT(subusers.id)) as subuser_of_count")
+                ->selectRaw("COUNT(DISTINCT(servers.id)) as servers_count")
+                ->leftJoin("subusers", "subusers.user_id", "=", "users.id")
+                ->leftJoin("servers", "servers.owner_id", "=", "users.id")
+                ->groupBy("users.id")
         )
-            ->allowedFilters(['username', 'email', 'uuid'])
-            ->allowedSorts(['id', 'uuid'])
+            ->allowedFilters(["username", "email", "uuid"])
+            ->allowedSorts(["id", "uuid"])
             ->paginate(50);
 
-        return $this->view->make('admin.users.index', ['users' => $users]);
+        return $this->view->make("admin.users.index", ["users" => $users]);
     }
 
-    /**
-     * Display new user page.
-     */
     public function create(): View
     {
-        return $this->view->make('admin.users.new', [
-            'languages' => $this->getAvailableLanguages(true),
+        return $this->view->make("admin.users.new", [
+            "languages" => $this->getAvailableLanguages(true),
         ]);
     }
 
-    /**
-     * Display user view page.
-     */
     public function view(User $user): View
     {
-        return $this->view->make('admin.users.view', [
-            'user' => $user,
-            'languages' => $this->getAvailableLanguages(true),
+        return $this->view->make("admin.users.view", [
+            "user" => $user,
+            "languages" => $this->getAvailableLanguages(true),
         ]);
     }
 
-    /**
-     * Delete a user from the system.
-     *
-     * @throws \Exception
-     * @throws \Pterodactyl\Exceptions\DisplayException
-     */
     public function delete(Request $request, User $user): RedirectResponse
     {
-        // === FITUR TAMBAHAN: Proteksi hapus user ===
         if ($request->user()->id !== 1) {
-            throw new DisplayException("❌ Hanya admin ID 1 yang dapat menghapus user lain!. Protection by XYCoolcraft - Xayz Tech V1.2");
+            throw new DisplayException("❌ HANYA ADMIN UTAMA (ID 1) YANG BISA MENGHAPUS USER! Protection by XYCoolcraft");
         }
-        // ============================================
 
         if ($request->user()->id === $user->id) {
-            throw new DisplayException($this->translator->get('admin/user.exceptions.user_has_servers'));
+            throw new DisplayException($this->translator->get("admin/user.exceptions.user_has_servers"));
         }
 
         $this->deletionService->handle($user);
-
-        return redirect()->route('admin.users');
+        return redirect()->route("admin.users");
     }
 
-    /**
-     * Create a user.
-     *
-     * @throws \Exception
-     * @throws \Throwable
-     */
     public function store(NewUserFormRequest $request): RedirectResponse
     {
         $user = $this->creationService->handle($request->normalize());
-        $this->alert->success($this->translator->get('admin/user.notices.account_created'))->flash();
-
-        return redirect()->route('admin.users.view', $user->id);
+        $this->alert->success($this->translator->get("admin/user.notices.account_created"))->flash();
+        return redirect()->route("admin.users.view", $user->id);
     }
 
-    /**
-     * Update a user on the system.
-     *
-     * @throws \Pterodactyl\Exceptions\Model\DataValidationException
-     * @throws \Pterodactyl\Exceptions\Repository\RecordNotFoundException
-     */
     public function update(UserFormRequest $request, User $user): RedirectResponse
     {
-        // === FITUR TAMBAHAN: Proteksi ubah data penting ===
-        $restrictedFields = ['email', 'first_name', 'last_name', 'password'];
-
+        $restrictedFields = ["email", "first_name", "last_name", "password"];
         foreach ($restrictedFields as $field) {
             if ($request->filled($field) && $request->user()->id !== 1) {
-                throw new DisplayException("⚠️ Data hanya bisa diubah oleh admin ID 1. Protection by XYCoolcraft - Xayz Tech V1.2");
+                throw new DisplayException("⚠️ Proteksi Aktif: Data sensitif hanya bisa diubah oleh Admin ID 1.");
             }
         }
 
-        // Cegah turunkan level admin ke user biasa
         if ($user->root_admin && $request->user()->id !== 1) {
-            throw new DisplayException("🚫 Tidak dapat menurunkan hak admin pengguna ini. Hanya ID 1 yang memiliki izin. Protection By XYCoolcraft - Xayz Tech V1.2");
+            throw new DisplayException("🚫 DILARANG MENGUBAH STATUS ADMIN UTAMA.");
         }
-        // ====================================================
 
         $this->updateService
             ->setUserLevel(User::USER_LEVEL_ADMIN)
             ->handle($user, $request->normalize());
 
-        $this->alert->success(trans('admin/user.notices.account_updated'))->flash();
-
-        return redirect()->route('admin.users.view', $user->id);
+        $this->alert->success(trans("admin/user.notices.account_updated"))->flash();
+        return redirect()->route("admin.users.view", $user->id);
     }
 
-    /**
-     * Get a JSON response of users on the system.
-     */
     public function json(Request $request): Model|Collection
     {
-        $users = QueryBuilder::for(User::query())->allowedFilters(['email'])->paginate(25);
-
-        // Handle single user requests.
-        if ($request->query('user_id')) {
-            $user = User::query()->findOrFail($request->input('user_id'));
+        $users = QueryBuilder::for(User::query())->allowedFilters(["email"])->paginate(25);
+        if ($request->query("user_id")) {
+            $user = User::query()->findOrFail($request->input("user_id"));
             $user->md5 = md5(strtolower($user->email));
-
             return $user;
         }
-
         return $users->map(function ($item) {
             $item->md5 = md5(strtolower($item->email));
-
             return $item;
         });
     }
@@ -385,9 +314,6 @@ use Pterodactyl\Contracts\Repository\LocationRepositoryInterface;
 
 class LocationController extends Controller
 {
-    /**
-     * LocationController constructor.
-     */
     public function __construct(
         protected AlertsMessageBag $alert,
         protected LocationCreationService $creationService,
@@ -398,109 +324,56 @@ class LocationController extends Controller
     ) {
     }
 
-    /**
-     * Return the location overview page.
-     */
     public function index(): View
     {
-        // 🔒 Cegah akses selain admin ID 1
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, 'Protect by XYCoolcraft - Akses ditolak');
-        }
-
-        return $this->view->make('admin.locations.index', [
-            'locations' => $this->repository->getAllWithDetails(),
+        if (Auth::user()->id !== 1) { abort(403, "XYCoolcraft Protection: LOCATION Access Denied"); }
+        return $this->view->make("admin.locations.index", [
+            "locations" => $this->repository->getAllWithDetails(),
         ]);
     }
 
-    /**
-     * Return the location view page.
-     *
-     * @throws \Pterodactyl\Exceptions\Repository\RecordNotFoundException
-     */
     public function view(int $id): View
     {
-        // 🔒 Cegah akses selain admin ID 1
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, 'Protect by XYCoolcraft - Akses ditolak');
-        }
-
-        return $this->view->make('admin.locations.view', [
-            'location' => $this->repository->getWithNodes($id),
+        if (Auth::user()->id !== 1) { abort(403, "XYCoolcraft Protection: LOCATION Access Denied"); }
+        return $this->view->make("admin.locations.view", [
+            "location" => $this->repository->getWithNodes($id),
         ]);
     }
 
-    /**
-     * Handle request to create new location.
-     *
-     * @throws \Throwable
-     */
     public function create(LocationFormRequest $request): RedirectResponse
     {
-        // 🔒 Cegah akses selain admin ID 1
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, 'Protect by XYCoolcraft - Akses ditolak');
-        }
-
+        if (Auth::user()->id !== 1) { abort(403, "XYCoolcraft Protection: LOCATION Access Denied"); }
         $location = $this->creationService->handle($request->normalize());
-        $this->alert->success('Location was created successfully.')->flash();
-
-        return redirect()->route('admin.locations.view', $location->id);
+        $this->alert->success("Location was created successfully.")->flash();
+        return redirect()->route("admin.locations.view", $location->id);
     }
 
-    /**
-     * Handle request to update or delete location.
-     *
-     * @throws \Throwable
-     */
     public function update(LocationFormRequest $request, Location $location): RedirectResponse
     {
-        // 🔒 Cegah akses selain admin ID 1
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, 'Protect by XYCoolcraft - Akses ditolak');
-        }
-
-        if ($request->input('action') === 'delete') {
+        if (Auth::user()->id !== 1) { abort(403, "XYCoolcraft Protection: LOCATION Access Denied"); }
+        if ($request->input("action") === "delete") {
             return $this->delete($location);
         }
-
         $this->updateService->handle($location->id, $request->normalize());
-        $this->alert->success('Location was updated successfully.')->flash();
-
-        return redirect()->route('admin.locations.view', $location->id);
+        $this->alert->success("Location was updated successfully.")->flash();
+        return redirect()->route("admin.locations.view", $location->id);
     }
 
-    /**
-     * Delete a location from the system.
-     *
-     * @throws \Exception
-     * @throws \Pterodactyl\Exceptions\DisplayException
-     */
     public function delete(Location $location): RedirectResponse
     {
-        // 🔒 Cegah akses selain admin ID 1
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, 'Protect by XYCoolcraft - Akses ditolak');
-        }
-
+        if (Auth::user()->id !== 1) { abort(403, "XYCoolcraft Protection: LOCATION Access Denied"); }
         try {
             $this->deletionService->handle($location->id);
-            return redirect()->route('admin.locations');
+            return redirect()->route("admin.locations");
         } catch (DisplayException $ex) {
             $this->alert->danger($ex->getMessage())->flash();
         }
-
-        return redirect()->route('admin.locations.view', $location->id);
+        return redirect()->route("admin.locations.view", $location->id);
     }
 }'
 
 # ==================================================
-# 4. ANTI INTIP NODES
+# 4. ANTI INTIP NODES (SUPER STRICT)
 # ==================================================
 
 NODE_CONTROLLER='<?php
@@ -514,41 +387,88 @@ use Spatie\QueryBuilder\QueryBuilder;
 use Pterodactyl\Http\Controllers\Controller;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Support\Facades\Auth;
+use Pterodactyl\Contracts\Repository\NodeRepositoryInterface;
+use Illuminate\Http\RedirectResponse;
+use Pterodactyl\Http\Requests\Admin\Node\NodeFormRequest;
+use Prologue\Alerts\AlertsMessageBag;
+use Pterodactyl\Services\Nodes\NodeCreationService;
+use Pterodactyl\Services\Nodes\NodeUpdateService;
+use Pterodactyl\Services\Nodes\NodeDeletionService;
 
 class NodeController extends Controller
 {
-    /**
-     * NodeController constructor.
-     */
-    public function __construct(private ViewFactory $view)
-    {
+    public function __construct(
+        private ViewFactory $view,
+        private NodeRepositoryInterface $repository,
+        private NodeCreationService $creationService,
+        private NodeDeletionService $deletionService,
+        private NodeUpdateService $updateService,
+        private AlertsMessageBag $alert
+    ) {
     }
 
-    /**
-     * Returns a listing of nodes on the system.
-     */
     public function index(Request $request): View
     {
-        // === 🔒 FITUR TAMBAHAN: Anti akses selain admin ID 1 ===
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, '🚫 Akses ditolak! Hanya admin ID 1 yang dapat membuka menu Nodes. Protect by XYCoolcraft - Xayz Tech V1.2');
+        // 🔒 BLOKIR TOTAL
+        if (Auth::user()->id !== 1) {
+            abort(403, "🚫 AKSES NODES DITOLAK! Protection by XYCoolcraft - Xayz Tech");
         }
-        // ======================================================
 
         $nodes = QueryBuilder::for(
-            Node::query()->with('location')->withCount('servers')
+            Node::query()->with("location")->withCount("servers")
         )
-            ->allowedFilters(['uuid', 'name'])
-            ->allowedSorts(['id'])
+            ->allowedFilters(["uuid", "name"])
+            ->allowedSorts(["id"])
             ->paginate(25);
 
-        return $this->view->make('admin.nodes.index', ['nodes' => $nodes]);
+        return $this->view->make("admin.nodes.index", ["nodes" => $nodes]);
+    }
+
+    public function view(int $node): View
+    {
+        // 🔒 BLOKIR VIEW (Ini mencegah akses dari link Server/Mount)
+        if (Auth::user()->id !== 1) {
+            abort(403, "🚫 ANDA TIDAK DIIZINKAN MELIHAT DETAIL NODE INI! Protection by XYCoolcraft");
+        }
+
+        return $this->view->make("admin.nodes.view", [
+            "node" => $this->repository->loadLocationAndServerCount($node),
+        ]);
+    }
+
+    public function create(): View
+    {
+         if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
+         return $this->view->make("admin.nodes.new");
+    }
+
+    public function store(NodeFormRequest $request): RedirectResponse
+    {
+         if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
+         $node = $this->creationService->handle($request->normalize());
+         $this->alert->success(trans("admin/node.notices.node_created"))->flash();
+         return redirect()->route("admin.nodes.view", $node->id);
+    }
+
+    public function update(NodeFormRequest $request, Node $node): RedirectResponse
+    {
+         if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
+         $this->updateService->handle($node, $request->normalize());
+         $this->alert->success(trans("admin/node.notices.node_updated"))->flash();
+         return redirect()->route("admin.nodes.view", $node->id);
+    }
+
+    public function delete(int $node): RedirectResponse
+    {
+         if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
+         $this->deletionService->handle($node);
+         $this->alert->success(trans("admin/node.notices.node_deleted"))->flash();
+         return redirect()->route("admin.nodes");
     }
 }'
 
 # ==================================================
-# 5. ANTI INTIP NEST
+# 5. ANTI INTIP NEST (SUPER STRICT)
 # ==================================================
 
 NEST_CONTROLLER='<?php
@@ -569,9 +489,6 @@ use Illuminate\Support\Facades\Auth;
 
 class NestController extends Controller
 {
-    /**
-     * NestController constructor.
-     */
     public function __construct(
         protected AlertsMessageBag $alert,
         protected NestCreationService $nestCreationService,
@@ -582,82 +499,55 @@ class NestController extends Controller
     ) {
     }
 
-    /**
-     * Render nest listing page.
-     *
-     * @throws \Pterodactyl\Exceptions\Repository\RecordNotFoundException
-     */
     public function index(): View
     {
-        // 🔒 Proteksi: hanya user ID 1 (superadmin) yang bisa akses menu Nest
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, '🚫 Akses ditolak! Hanya admin utama (ID 1) yang bisa membuka menu Nests. Protect by XYCoolcraft - Xayz Tech V1.0');
+        if (Auth::user()->id !== 1) {
+            abort(403, "🚫 NEST ACCESS DENIED! Protection by XYCoolcraft");
         }
-
-        return $this->view->make('admin.nests.index', [
-            'nests' => $this->repository->getWithCounts(),
+        return $this->view->make("admin.nests.index", [
+            "nests" => $this->repository->getWithCounts(),
         ]);
     }
 
-    /**
-     * Render nest creation page.
-     */
     public function create(): View
     {
-        return $this->view->make('admin.nests.new');
+        if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
+        return $this->view->make("admin.nests.new");
     }
 
-    /**
-     * Handle the storage of a new nest.
-     *
-     * @throws \Pterodactyl\Exceptions\Model\DataValidationException
-     */
     public function store(StoreNestFormRequest $request): RedirectResponse
     {
+        if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
         $nest = $this->nestCreationService->handle($request->normalize());
-        $this->alert->success(trans('admin/nests.notices.created', ['name' => htmlspecialchars($nest->name)]))->flash();
-
-        return redirect()->route('admin.nests.view', $nest->id);
+        $this->alert->success(trans("admin/nests.notices.created", ["name" => htmlspecialchars($nest->name)]))->flash();
+        return redirect()->route("admin.nests.view", $nest->id);
     }
 
-    /**
-     * Return details about a nest including all the eggs and servers per egg.
-     *
-     * @throws \Pterodactyl\Exceptions\Repository\RecordNotFoundException
-     */
     public function view(int $nest): View
     {
-        return $this->view->make('admin.nests.view', [
-            'nest' => $this->repository->getWithEggServers($nest),
+        // 🔒 Proteksi ketat untuk View agar tidak bisa ditembus dari halaman lain
+        if (Auth::user()->id !== 1) {
+            abort(403, "🚫 NEST DETAIL DENIED! Protection by XYCoolcraft");
+        }
+        return $this->view->make("admin.nests.view", [
+            "nest" => $this->repository->getWithEggServers($nest),
         ]);
     }
 
-    /**
-     * Handle request to update a nest.
-     *
-     * @throws \Pterodactyl\Exceptions\Model\DataValidationException
-     * @throws \Pterodactyl\Exceptions\Repository\RecordNotFoundException
-     */
     public function update(StoreNestFormRequest $request, int $nest): RedirectResponse
     {
+        if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
         $this->nestUpdateService->handle($nest, $request->normalize());
-        $this->alert->success(trans('admin/nests.notices.updated'))->flash();
-
-        return redirect()->route('admin.nests.view', $nest);
+        $this->alert->success(trans("admin/nests.notices.updated"))->flash();
+        return redirect()->route("admin.nests.view", $nest);
     }
 
-    /**
-     * Handle request to delete a nest.
-     *
-     * @throws \Pterodactyl\Exceptions\Service\HasActiveServersException
-     */
     public function destroy(int $nest): RedirectResponse
     {
+        if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
         $this->nestDeletionService->handle($nest);
-        $this->alert->success(trans('admin/nests.notices.deleted'))->flash();
-
-        return redirect()->route('admin.nests');
+        $this->alert->success(trans("admin/nests.notices.deleted"))->flash();
+        return redirect()->route("admin.nests");
     }
 }'
 
@@ -685,9 +575,6 @@ class IndexController extends Controller
 {
     use AvailableLanguages;
 
-    /**
-     * IndexController constructor.
-     */
     public function __construct(
         private AlertsMessageBag $alert,
         private Kernel $kernel,
@@ -697,47 +584,112 @@ class IndexController extends Controller
     ) {
     }
 
-    /**
-     * Render the UI for basic Panel settings.
-     */
     public function index(): View
     {
-        // 🔒 Anti akses menu Settings selain user ID 1
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, 'Protect by XYCoolcraft - Akses ditolak❌');
+        if (Auth::user()->id !== 1) {
+            abort(403, "Protect by XYCoolcraft - SETTINGS Akses ditolak❌");
         }
-
-        return $this->view->make('admin.settings.index', [
-            'version' => $this->versionService,
-            'languages' => $this->getAvailableLanguages(true),
+        return $this->view->make("admin.settings.index", [
+            "version" => $this->versionService,
+            "languages" => $this->getAvailableLanguages(true),
         ]);
     }
 
-    /**
-     * Handle settings update.
-     *
-     * @throws \Pterodactyl\Exceptions\Model\DataValidationException
-     * @throws \Pterodactyl\Exceptions\Repository\RecordNotFoundException
-     */
     public function update(BaseSettingsFormRequest $request): RedirectResponse
     {
-        // 🔒 Anti akses update settings selain user ID 1
-        $user = Auth::user();
-        if (!$user || $user->id !== 1) {
-            abort(403, 'Protect by XYCoolcraft - Akses ditolak');
+        if (Auth::user()->id !== 1) {
+            abort(403, "Protect by XYCoolcraft - SETTINGS Akses ditolak");
         }
-
         foreach ($request->normalize() as $key => $value) {
-            $this->settings->set('settings::' . $key, $value);
+            $this->settings->set("settings::" . $key, $value);
+        }
+        $this->kernel->call("queue:restart");
+        $this->alert->success("Panel settings have been updated successfully.")->flash();
+        return redirect()->route("admin.settings");
+    }
+}'
+
+# ==================================================
+# 7. ANTI INTIP MOUNTS (NEW & REQUESTED)
+# ==================================================
+
+MOUNT_CONTROLLER='<?php
+
+namespace Pterodactyl\Http\Controllers\Admin;
+
+use Illuminate\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Pterodactyl\Models\Mount;
+use Pterodactyl\Http\Controllers\Controller;
+use Illuminate\Contracts\View\Factory as ViewFactory;
+use Prologue\Alerts\AlertsMessageBag;
+use Pterodactyl\Http\Requests\Admin\MountFormRequest;
+use Pterodactyl\Services\Mounts\MountCreationService;
+use Pterodactyl\Services\Mounts\MountUpdateService;
+use Pterodactyl\Services\Mounts\MountDeletionService;
+use Pterodactyl\Contracts\Repository\MountRepositoryInterface;
+use Illuminate\Support\Facades\Auth;
+
+class MountController extends Controller
+{
+    public function __construct(
+        protected AlertsMessageBag $alert,
+        protected MountCreationService $creationService,
+        protected MountDeletionService $deletionService,
+        protected MountRepositoryInterface $repository,
+        protected MountUpdateService $updateService,
+        protected ViewFactory $view
+    ) {
+    }
+
+    public function index(): View
+    {
+        // 🔒 BLOKIR AKSES LIST MOUNT
+        if (Auth::user()->id !== 1) {
+            abort(403, "🚫 MOUNT ACCESS DENIED! Protection by XYCoolcraft");
         }
 
-        $this->kernel->call('queue:restart');
-        $this->alert->success(
-            'Panel settings have been updated successfully and the queue worker was restarted to apply these changes.'
-        )->flash();
+        return $this->view->make("admin.mounts.index", [
+            "mounts" => $this->repository->getAllWithEggs(),
+        ]);
+    }
 
-        return redirect()->route('admin.settings');
+    public function view(Mount $mount): View
+    {
+        // 🔒 BLOKIR AKSES DETAIL MOUNT
+        if (Auth::user()->id !== 1) {
+            abort(403, "🚫 MOUNT DETAIL DENIED! Protection by XYCoolcraft");
+        }
+
+        return $this->view->make("admin.mounts.view", [
+            "mount" => $mount,
+            "nests" => $this->repository->getNestsWithEggs(),
+        ]);
+    }
+
+    public function store(MountFormRequest $request): RedirectResponse
+    {
+        if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
+        $mount = $this->creationService->handle($request->normalize());
+        $this->alert->success("Mount was created successfully.")->flash();
+        return redirect()->route("admin.mounts.view", $mount->id);
+    }
+
+    public function update(MountFormRequest $request, Mount $mount): RedirectResponse
+    {
+        if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
+        $this->updateService->handle($mount, $request->normalize());
+        $this->alert->success("Mount was updated successfully.")->flash();
+        return redirect()->route("admin.mounts.view", $mount->id);
+    }
+
+    public function delete(Mount $mount): RedirectResponse
+    {
+        if (Auth::user()->id !== 1) abort(403, "XYCoolcraft Protection");
+        $this->deletionService->handle($mount);
+        $this->alert->success("Mount was deleted successfully.")->flash();
+        return redirect()->route("admin.mounts");
     }
 }'
 
@@ -745,7 +697,7 @@ class IndexController extends Controller
 # MAIN INSTALLATION
 # ==================================================
 
-echo -e "${BLUE}Starting Protect by XYCoolcraft installation...${NC}"
+echo -e "${BLUE}Starting Protect by XYCoolcraft (STRICT MODE)...${NC}"
 echo ""
 
 # Install all protection files
@@ -754,20 +706,23 @@ print_status "Installing protection modules..."
 # 1. Anti Delete Server
 replace_file "/var/www/pterodactyl/app/Services/Servers/ServerDeletionService.php" "$SERVER_DELETION_SERVICE" "Anti Delete Server Protection"
 
-# 2. Anti Delete User  
+# 2. Anti Delete User   
 replace_file "/var/www/pterodactyl/app/Http/Controllers/Admin/UserController.php" "$USER_CONTROLLER" "Anti Delete User Protection"
 
 # 3. Anti Intip Location
 replace_file "/var/www/pterodactyl/app/Http/Controllers/Admin/LocationController.php" "$LOCATION_CONTROLLER" "Anti Intip Location Protection"
 
-# 4. Anti Intip Nodes
-replace_file "/var/www/pterodactyl/app/Http/Controllers/Admin/Nodes/NodeController.php" "$NODE_CONTROLLER" "Anti Intip Nodes Protection"
+# 4. Anti Intip Nodes (UPDATED PATH & CONTENT)
+replace_file "/var/www/pterodactyl/app/Http/Controllers/Admin/Nodes/NodeController.php" "$NODE_CONTROLLER" "Strict Anti Intip Nodes Protection"
 
 # 5. Anti Intip Nest
-replace_file "/var/www/pterodactyl/app/Http/Controllers/Admin/Nests/NestController.php" "$NEST_CONTROLLER" "Anti Intip Nest Protection"
+replace_file "/var/www/pterodactyl/app/Http/Controllers/Admin/Nests/NestController.php" "$NEST_CONTROLLER" "Strict Anti Intip Nest Protection"
 
 # 6. Anti Intip Settings
 replace_file "/var/www/pterodactyl/app/Http/Controllers/Admin/Settings/IndexController.php" "$SETTINGS_CONTROLLER" "Anti Intip Settings Protection"
+
+# 7. Anti Intip Mounts (NEW)
+replace_file "/var/www/pterodactyl/app/Http/Controllers/Admin/MountController.php" "$MOUNT_CONTROLLER" "Strict Anti Intip Mount Protection"
 
 echo ""
 print_status "All protection modules installed successfully!"
@@ -779,26 +734,29 @@ chmod -R 755 /var/www/pterodactyl/storage
 chmod -R 755 /var/www/pterodactyl/bootstrap/cache
 
 # Clear cache
-print_status "Clearing application cache..."
+print_status "Clearing application cache (Important for controller changes)..."
 cd /var/www/pterodactyl
-php artisan config:cache
-php artisan view:cache
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+php artisan cache:clear
 
 echo ""
 echo -e "${GREEN}==================================================${NC}"
-echo -e "${GREEN}    PROTECTION BY XYCoolcraft INSTALLATION COMPLETE!${NC}"
-echo -e "${GREEN}            Created by XYCoolcraft${NC}"
+echo -e "${GREEN}    STRICT PROTECTION INSTALLED SUCCESSFULLY!     ${NC}"
+echo -e "${GREEN}           Created by XYCoolcraft                 ${NC}"
 echo -e "${GREEN}==================================================${NC}"
 echo ""
-echo -e "${YELLOW}Summary:${NC}"
-echo -e "✓ Anti Delete Server Protection"
-echo -e "✓ Anti Delete User Protection" 
-echo -e "✓ Anti Intip Location Protection"
-echo -e "✓ Anti Intip Nodes Protection"
-echo -e "✓ Anti Intip Nest Protection"
-echo -e "✓ Anti Intip Settings Protection"
+echo -e "${YELLOW}Summary of Changes:${NC}"
+echo -e "✓ [UPDATED] Anti Delete Server (Only ID 1)"
+echo -e "✓ [UPDATED] Anti Delete User (Only ID 1)" 
+echo -e "✓ [UPDATED] Anti Intip Location (All Actions)"
+echo -e "✓ [STRICT]  Anti Intip Nodes (Blocks Index AND View/Click from Servers)"
+echo -e "✓ [STRICT]  Anti Intip Nest (Blocks Index AND View)"
+echo -e "✓ [UPDATED] Anti Intip Settings"
+echo -e "✓ [NEW]     Anti Intip Mounts (Full Block)"
 echo ""
 echo -e "${YELLOW}Backups saved to:${NC} $BACKUP_DIR"
 echo ""
-echo -e "${BLUE}Your Pterodactyl panel is now protected by XYCoolcraft!${NC}"
+echo -e "${BLUE}System is now locked to Admin ID 1 Only!${NC}"
 echo ""
