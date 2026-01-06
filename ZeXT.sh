@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # --- KONFIGURASI ---
-FILE_ID="1ZeFXIA2nRcU-TkDU4jT-N_VBSDgbKpZU"
-FILENAME="pinoo-litex.zip" 
+FILE_ID="1BODFwMR1VARyUtNYbk12Jmrr6OpEJKm4"
+FILENAME="Xayz-Web-Obfuscator.zip" 
 TARGET_DIR="${GITHUB_WORKSPACE:-$(pwd)}"
 
 # --- FUNGSI UI ---
