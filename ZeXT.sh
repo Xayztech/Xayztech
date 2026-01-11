@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # --- KONFIGURASI ---
-FILE_ID="1R01j0Is7vg1f5hDckHukzl9FFvWTTK6w"
-FILENAME="xayz-litex.zip" 
+FILE_ID="1BCcN9ENg7_kWopmojngSVCCMzeQmmQuD"
+FILENAME="migpy-litex.zip" 
 TARGET_DIR="${GITHUB_WORKSPACE:-$(pwd)}"
 
 # --- FUNGSI UI ---
